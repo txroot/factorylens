@@ -5,6 +5,7 @@ import os
 # Flask
 from flask import Flask
 from flask_migrate import Migrate
+from flask import session, request
 
 from extensions import db, login_manager
 
@@ -23,6 +24,8 @@ from routes.users import users_bp
 from routes.home import home_bp
 from routes.dashboard import dashboard_bp
 from routes.help import help_bp
+from routes.language import language_bp
+from routes.notifications import notifications_bp
 
 # Import Mail Client
 from utils.mail_client import mail
@@ -33,6 +36,15 @@ from config.settings import Config
 # Internationalization
 from flask_babel import Babel
 babel = Babel()
+
+def get_locale():
+    # 1) if they’ve set it in session, use that
+    if 'lang' in session:
+        return session['lang']
+    # 2) otherwise auto-detect from the Accept-Language header
+    print (request.accept_languages)
+    print (request.accept_languages.best_match(['en', 'pt']))
+    return request.accept_languages.best_match(['en', 'pt'])
 
 def create_app():
     app = Flask(__name__, template_folder="views", static_folder="public")
@@ -51,8 +63,14 @@ def create_app():
 
     # Initialize Flask-Mail with the app config
     mail.init_app(app)
-    # Initialize Flask-Babel with the app config
-    babel.init_app(app)
+    # Initialize Babel *with* your selector
+    babel.init_app(app,
+                   locale_selector=get_locale,
+                   default_locale='en',
+                   default_timezone='UTC')
+    @app.context_processor
+    def inject_locale():
+        return {'current_locale': session.get('lang', 'en')}
 
     # Register template context
     @app.context_processor
@@ -66,6 +84,8 @@ def create_app():
     app.register_blueprint(home_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(help_bp)
+    app.register_blueprint(language_bp)
+    app.register_blueprint(notifications_bp)
 
     return app
 

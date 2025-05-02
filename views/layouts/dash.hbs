@@ -1,9 +1,8 @@
+<!-- layouts/dash.hbs -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Title -->
     <title>{{ gettext("dashboard_title") }}</title>
-    <!-- Required Meta Tags -->
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="handheldfriendly" content="true" />
@@ -12,10 +11,34 @@
     <meta name="author" content="Microlumin" />
     <meta name="keywords" content="Factory Lens Dashboard" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/logos/favicon.ico') }}" />
-    <!-- Core CSS -->
+
+    <!-- Icon Library (e.g., FontAwesome or Typicons) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <!-- Core CSS Files -->
     <link id="themeColors" rel="stylesheet" href="{{ url_for('static', filename='css/style.min.css') }}" />
+
+    <!-- Custom CSS for Footer Fix -->
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .body-wrapper {
+            flex-grow: 1;
+        }
+        footer {
+            padding-top: 20px;
+        }
+    </style>
   </head>
   <body>
     <!-- Preloader -->
@@ -24,21 +47,21 @@
     </div>
 
     <!-- Main Wrapper -->
-    <div class="page-wrapper" id="main-wrapper" data-theme="blue_theme" data-layout="vertical" data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed">
+    <div class="page-wrapper d-flex flex-column min-vh-100" id="main-wrapper" data-theme="blue_theme" data-layout="vertical" data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed">
       
       <!-- Sidebar Start -->
       {% include "partials/sidebar.hbs" %}
       <!-- Sidebar End -->
 
       <!-- Body Wrapper -->
-      <div class="body-wrapper">
+      <div class="body-wrapper d-flex flex-column flex-grow-1">
         
         <!-- Navbar Start -->
         {% include "partials/navbar.hbs" %}
         <!-- Navbar End -->
 
         <!-- Content Start -->
-        <div class="container-fluid">
+        <div class="container-fluid flex-grow-1">
           {% block content %}CONTENT HERE{% endblock %}
         </div>
         <!-- Content End -->
@@ -49,7 +72,7 @@
       </div>
     </div>
 
-    <!-- JS Scripts -->
+    <!-- JS Libraries (required for the page) -->
     <script src="{{ url_for('static', filename='libs/jquery/dist/jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/simplebar/dist/simplebar.min.js') }}"></script>
     <script src="{{ url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>

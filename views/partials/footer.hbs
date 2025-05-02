@@ -1,6 +1,42 @@
-<footer class="footer">
-  <div class="text-center">
-    <p>{{ gettext("footer_text") }}</p>
-    <p>{{ gettext("footer_attribution") }} <a href="https://microlumin.pt" target="_blank">Microlumin</a>.</p>
+<!-- partials/footer.hbs -->
+<footer class="footer text-center text-muted bg-light mt-auto">
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <p class="mb-0">
+          <span id="current-year"></span>
+          <span data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top"
+            title="
+            Licensed under <a href='https://opensource.org/licenses/MIT' target='_blank'>MIT License</a>.
+            <hr>
+            Reproduction and usage must always cite the main author as the source.">Factory Lens
+            System
+          </span>
+        </p>
+        <p class="mb-0" style="padding-bottom: 20px;">Built with <i class="ti ti-hammer text-info"></i>, <i
+            class="ti ti-brain text-warning"></i> and <i class="ti ti-heart text-danger"></i> by <a href="https://www.microlumin.pt" target="_blank" class="text-muted"><strong>Microlumin</strong></a></p>
+      </div>
+    </div>
   </div>
 </footer>
+
+<!-- Add Bootstrap JS and Popper.js for tooltip functionality -->
+<script src="/assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/libs/popperjs/core/dist/umd/popper.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl, {
+      html: true  // Allow HTML in the tooltip
+    });
+  });
+});
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', (event) => {
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+  });
+</script>

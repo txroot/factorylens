@@ -16,3 +16,17 @@ def login():
     if request.method == 'POST':
         login_user(request.form)
     return render_template('login.hbs')
+
+# Dummy data for the settings page
+user_data = {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "johndoe@example.com",
+    "avatar_url": "/static/img/users/default-avatar.png"
+}
+
+# Settings route added here
+@users_bp.route('/settings', methods=['GET', 'POST'])
+def settings():
+    # You can later replace the dummy data with actual database data
+    return render_template('settings.hbs', user=user_data)
