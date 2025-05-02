@@ -1,0 +1,114 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+# Errors
+msgid "missing_credentials"
+msgstr "missing_credentials"
+
+msgid "invalid_credentials"
+msgstr "invalid_credentials"
+
+msgid "invalid_password_or_pin"
+msgstr "invalid_password_or_pin"
+
+msgid "login_failed"
+msgstr "login_failed"
+
+msgid "terms_of_use_required"
+msgstr "terms_of_use_required"
+
+msgid "email_or_username_taken"
+msgstr "email_or_username_taken"
+
+msgid "internal_server_error"
+msgstr "internal_server_error"
+
+msgid "invalid_token"
+msgstr "invalid_token"
+
+msgid "token_expired"
+msgstr "token_expired"
+
+# General
+msgid "welcome_title"
+msgstr "Microlumin | Welcome to our cloud services"
+
+msgid "dashboard_description"
+msgstr "Access your dashboard to manage cloud services and IoT devices."
+
+msgid "username_label"
+msgstr "Username"
+
+msgid "username_or_email_label"
+msgstr "Username or Email"
+
+msgid "password_label"
+msgstr "Password"
+
+msgid "remember_device"
+msgstr "Remember this Device"
+
+msgid "forgot_password"
+msgstr "Forgot your Password?"
+
+msgid "sign_in_button"
+msgstr "Sign In"
+
+msgid "sign_in_google"
+msgstr "Sign in with Google"
+
+msgid "sign_in_facebook"
+msgstr "Sign in with Facebook"
+
+msgid "or_sign_in"
+msgstr "or sign in with"
+
+msgid "new_to_platform"
+msgstr "New to Microlumin?"
+
+msgid "create_account"
+msgstr "Create an account"
+
+msgid "register_title"
+msgstr "Register at Microlumin"
+
+msgid "email_label"
+msgstr "Email Address"
+
+msgid "back_to_login"
+msgstr "Back to Login"
+
+msgid "register_button"
+msgstr "Register"
+
+msgid "recover_password_title"
+msgstr "Recover Password"
+
+msgid "recover_button"
+msgstr "Recover"
+
+msgid "first_name_label"
+msgstr "First Name"
+
+msgid "last_name_label"
+msgstr "Last Name"
+
+msgid "pin_label"
+msgstr "PIN"
+
+msgid "use_pin_label"
+msgstr "Use PIN to login"
+
+msgid "newsletter_label"
+msgstr "Subscribe to Newsletter"
+
+msgid "agree_terms_label"
+msgstr "I agree with the"
+
+msgid "terms_of_use_link"
+msgstr "Terms of Use"
+
+msgid "loginInputHelp"
+msgstr "Enter your username or email"

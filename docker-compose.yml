@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  factory-lens:
+    build:
+      context: .
+    container_name: factory-lens
+    ports:
+      - "8082:8082"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      FLASK_DEBUG: ${FLASK_DEBUG}
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      MQTT_BROKER: ${MQTT_BROKER}
+      MQTT_PORT: ${MQTT_PORT}
+    depends_on:
+      - db
+      - mqtt
+    restart: unless-stopped
+
+  db:
+    image: mariadb:10.6
+    container_name: factorylens-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ${MYSQL_DATA_PATH}:/var/lib/mysql
+    ports:
+      - "3308:3306"
+    restart: unless-stopped
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    container_name: factorylens-mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: factorylens-pma
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: ${DB_HOST}
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8083:80"
+    restart: unless-stopped

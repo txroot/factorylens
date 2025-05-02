@@ -1,0 +1,12 @@
+mysql_data/
+mysql-data/.my-healthcheck.cnf
+mysql-data/aria_log.00000001
+mysql-data/aria_log_control
+mysql-data/ddl_recovery-backup.log
+mysql-data/ddl_recovery.log
+mysql-data/ib_buffer_pool
+mysql-data/ib_logfile0
+mysql-data/ibdata1
+mysql-data/ibtmp1
+mysql-data/multi-master.info
+mysql-data/mysql_upgrade_info

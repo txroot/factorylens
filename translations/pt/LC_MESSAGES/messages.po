@@ -1,0 +1,114 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: pt\n"
+
+# Errors
+msgid "missing_credentials"
+msgstr "Nome de utilizador/email e palavra-passe são obrigatórios."
+
+msgid "invalid_credentials"
+msgstr "Nome de utilizador ou email incorretos."
+
+msgid "invalid_password_or_pin"
+msgstr "Palavra-passe ou PIN incorretos."
+
+msgid "login_failed"
+msgstr "Falha no login."
+
+msgid "terms_of_use_required"
+msgstr "Deve concordar com os termos de utilização para se registar."
+
+msgid "email_or_username_taken"
+msgstr "Email ou nome de utilizador já estão em uso."
+
+msgid "internal_server_error"
+msgstr "Erro interno do servidor."
+
+msgid "invalid_token"
+msgstr "Token inválido ou expirado."
+
+msgid "token_expired"
+msgstr "Token expirou."
+
+# General
+msgid "welcome_title"
+msgstr "Microlumin | Bem-vindo aos nossos serviços na cloud"
+
+msgid "dashboard_description"
+msgstr "Aceda ao seu painel para gerir serviços na nuvem e dispositivos IoT."
+
+msgid "username_label"
+msgstr "Nome de Utilizador"
+
+msgid "username_or_email_label"
+msgstr "Nome de Utilizador ou Email"
+
+msgid "password_label"
+msgstr "Palavra-passe"
+
+msgid "remember_device"
+msgstr "Lembrar este Dispositivo"
+
+msgid "forgot_password"
+msgstr "Esqueceu-se da Palavra-passe?"
+
+msgid "sign_in_button"
+msgstr "Iniciar Sessão"
+
+msgid "sign_in_google"
+msgstr "Iniciar com o Google"
+
+msgid "sign_in_facebook"
+msgstr "Iniciar com o Facebook"
+
+msgid "or_sign_in"
+msgstr "ou inicie sessão com"
+
+msgid "new_to_platform"
+msgstr "Novo na Microlumin?"
+
+msgid "create_account"
+msgstr "Criar uma conta"
+
+msgid "register_title"
+msgstr "Registar na Microlumin"
+
+msgid "email_label"
+msgstr "Endereço de Email"
+
+msgid "back_to_login"
+msgstr "Voltar para a Sessão"
+
+msgid "register_button"
+msgstr "Registar"
+
+msgid "recover_password_title"
+msgstr "Recuperar Palavra-passe"
+
+msgid "recover_button"
+msgstr "Recuperar"
+
+msgid "first_name_label"
+msgstr "Primeiro Nome"
+
+msgid "last_name_label"
+msgstr "Último Nome"
+
+msgid "pin_label"
+msgstr "PIN"
+
+msgid "use_pin_label"
+msgstr "Usar PIN para iniciar sessão"
+
+msgid "newsletter_label"
+msgstr "Subscrever à Newsletter"
+
+msgid "agree_terms_label"
+msgstr "Concordo com os"
+
+msgid "terms_of_use_link"
+msgstr "Termos de Uso"
+
+msgid "loginInputHelp"
+msgstr "Introduza o seu nome de utilizador ou email"
