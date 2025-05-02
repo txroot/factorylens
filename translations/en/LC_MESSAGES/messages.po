@@ -112,3 +112,36 @@ msgstr "Terms of Use"
 
 msgid "loginInputHelp"
 msgstr "Enter your username or email"
+
+msgid "apps"
+msgstr "Apps"
+
+msgid "devices"
+msgstr "devices"
+
+msgid "cameras"
+msgstr "cameras"
+
+msgid "device_control"
+msgstr "Device Control"
+
+msgid "video_player"
+msgstr "Video Player"
+
+msgid "file_explorer"
+msgstr "File Explorer"
+
+msgid "system_logs"
+msgstr "System Logs"
+
+msgid "communication"
+msgstr "Communication"
+
+msgid "file_storage"
+msgstr "File Storage"
+
+msgid "sidebar_quote"
+msgstr "Success is the sum of small efforts, repeated day in and day out"
+
+msgid "sidebar_quote_author"
+msgstr "Robert Collier"

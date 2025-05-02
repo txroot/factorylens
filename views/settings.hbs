@@ -1,0 +1,10 @@
+{% extends "layouts/dash.hbs" %}
+{% block content %}
+  <h2>{{ gettext("camera_settings") }}</h2>
+  <!-- loop through cameras and show edit form -->
+  <ul>
+  {% for cam in cameras %}
+    <li>{{ cam.name }} ({{ cam.ip_address }})</li>
+  {% endfor %}
+  </ul>
+{% endblock %}

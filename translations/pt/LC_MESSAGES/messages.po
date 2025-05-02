@@ -112,3 +112,42 @@ msgstr "Termos de uso"
 
 msgid "loginInputHelp"
 msgstr "Introduza o seu nome de utilizador ou email"
+
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: pt_PT\n"
+"Language-Team: European Portuguese <your.email@example.com>\n"
+
+msgid "apps"
+msgstr "Aplicações"
+
+msgid "device_control"
+msgstr "Controlo de Dispositivos"
+
+msgid "devices"
+msgstr "dispositivos"
+
+msgid "cameras"
+msgstr "câmaras"
+
+msgid "video_player"
+msgstr "Reprodutor de Vídeo"
+
+msgid "file_explorer"
+msgstr "Explorador de Ficheiros"
+
+msgid "system_logs"
+msgstr "Registos do Sistema"
+
+msgid "communication"
+msgstr "Comunicação"
+
+msgid "file_storage"
+msgstr "Armazenamento de Ficheiros"
+
+msgid "sidebar_quote"
+msgstr "O sucesso é a soma de pequenos esforços, repetidos dia após dia"
+
+msgid "sidebar_quote_author"
+msgstr "Robert Collier"
