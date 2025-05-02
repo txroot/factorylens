@@ -1,238 +1,97 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <!-- Title -->
-    <title>{{ gettext("welcome_title") }}</title>
-    <!-- Required Meta Tags -->
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="handheldfriendly" content="true" />
-    <meta name="MobileOptimized" content="width" />
-    <meta name="description" content="Microlumin Cloud Services" />
-    <meta name="author" content="" />
-    <meta name="keywords" content="IoT Cloud Services" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <!-- Favicon -->
-    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/logos/favicon.ico') }}" />
-    <!-- Core CSS -->
-    <link id="themeColors" rel="stylesheet" href="{{ url_for('static', filename='css/style.min.css') }}" />
-  </head>
-  <body>
-    <!-- Preloader -->
-    <div class="preloader">
-      <img src="{{ url_for('static', filename='img/logos/favicon.ico') }}" alt="loader" class="lds-ripple img-fluid" />
-    </div>
-    <!-- Body Wrapper -->
-    <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed">
-      <div class="position-relative overflow-hidden radial-gradient min-vh-100">
-        <div class="position-relative z-index-5">
-          <div class="row">
-            <div class="col-xl-7 col-xxl-8">
-              <a href="https://microlumin.pt" class="text-nowrap logo-img d-block px-4 py-9 w-100">
-                <img src="{{ url_for('static', filename='img/logos/logo-wt.png') }}" width="180" alt="">
-              </a>
-              <div class="d-none d-xl-flex align-items-center justify-content-center" style="height: calc(100vh - 80px);">
-                <img src="{{ url_for('static', filename='img/backgrounds/landing-page.svg') }}" alt="" class="img-fluid" width="500">
-              </div>
-            </div>
-            <div id="authentication-panel" class="col-xl-5 col-xxl-4">
-              <div class="authentication-login min-vh-100 bg-body row justify-content-center align-items-center p-4">
-                <!-- Login Form -->
-                <div id="login-form">
-                  <h2 class="mb-3 fs-7 fw-bolder">{{ gettext("welcome_title") }}</h2>
-                  <p class="mb-9">{{ gettext("dashboard_description") }}</p>
-                  <form>
-                    <div class="mb-3">
-                      <label for="inputIdentificer" class="form-label">{{ gettext("username_or_email_label") }}</label>
-                      <input type="email" class="form-control" id="inputIdentifier" aria-describedby="loginInputHelp">
-                    </div>
-                    <div class="mb-4">
-                      <label for="inputPassword" class="form-label">{{ gettext("password_label") }}</label>
-                      <input type="password" class="form-control" id="inputPassword">
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between mb-4">
-                      <div class="form-check">
-                        <input class="form-check-input primary" type="checkbox" value="" id="flexCheckChecked" checked>
-                        <label class="form-check-label text-dark" for="flexCheckChecked">
-                          {{ gettext("remember_device") }}
-                        </label>
-                      </div>
-                      <a class="text-primary fw-medium" href="javascript:void(0)" id="recover-password-link">{{ gettext("forgot_password") }}</a>
-                    </div>
-                    <a href="javascript:void(0)" id="login-button" class="btn btn-primary w-100 py-8 mb-4 rounded-2">{{ gettext("sign_in_button") }}</a>
-                    <div class="d-flex align-items-center justify-content-center">
-                      <p class="fs-4 mb-0 fw-medium">{{ gettext("new_to_platform") }}</p>
-                      <a class="text-primary fw-medium ms-2" href="javascript:void(0)" id="create-account-link">{{ gettext("create_account") }}</a>
-                    </div>
-                  </form>
-                </div>
-                <!-- Register Form -->
-                <div id="register-form" class="d-none">
-                  <h2 class="mb-3 fs-7 fw-bolder">{{ gettext("register_title") }}</h2>
-                  <form id="registerForm" action="/users/register" method="POST">
-                    <div class="mb-3">
-                      <label for="firstName" class="form-label">{{ gettext("first_name_label") }}</label>
-                      <input type="text" class="form-control" id="firstName" name="first_name" required>
-                    </div>
-                    <div class="mb-3">
-                      <label for="lastName" class="form-label">{{ gettext("last_name_label") }}</label>
-                      <input type="text" class="form-control" id="lastName" name="last_name" required>
-                    </div>
-                    <div class="mb-3">
-                      <label for="registerEmail" class="form-label">{{ gettext("email_label") }}</label>
-                      <input type="email" class="form-control" id="registerEmail" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                      <label for="registerPassword" class="form-label">{{ gettext("password_label") }}</label>
-                      <input type="password" class="form-control" id="registerPassword" name="password" required>
-                    </div>
-                    <div class="mb-3">
-                      <label for="registerPin" class="form-label">{{ gettext("pin_label") }}</label>
-                      <input type="text" class="form-control" id="registerPin" name="pin">
-                    </div>
-                    <div class="mb-3">
-                      <label for="username" class="form-label">{{ gettext("username_label") }}</label>
-                      <input type="text" class="form-control" id="username" name="username">
-                    </div>
-                    <div class="form-check mb-3">
-                      <input class="form-check-input" type="checkbox" id="usePin" name="use_pin">
-                      <label class="form-check-label" for="usePin">
-                        {{ gettext("use_pin_label") }}
-                      </label>
-                    </div>
-                    <div class="form-check mb-3">
-                      <input class="form-check-input" type="checkbox" id="newsletter" name="newsletter">
-                      <label class="form-check-label" for="newsletter">
-                        {{ gettext("newsletter_label") }}
-                      </label>
-                    </div>
-                    <div class="form-check mb-3">
-                      <input class="form-check-input" type="checkbox" id="termsOfUse" name="terms_of_use" required>
-                      <label class="form-check-label" for="termsOfUse">
-                        {{ gettext("agree_terms_label") }} <a href="/terms-of-use" target="_blank">{{ gettext("terms_of_use_link") }}</a>
-                      </label>
-                    </div>
-                    <a href="javascript:void(0)" class="text-primary fw-medium" id="back-to-login-link">{{ gettext("back_to_login") }}</a>
-                    <button type="submit" class="btn btn-primary w-100 py-8 mt-4 rounded-2">{{ gettext("register_button") }}</button>
-                  </form>
-                </div>
-                <!-- Recover Password Form -->
-                <div id="recover-form" class="d-none">
-                  <h2 class="mb-3 fs-7 fw-bolder">{{ gettext("recover_password_title") }}</h2>
-                  <form>
-                    <div class="mb-3">
-                      <label for="recoverEmail" class="form-label">{{ gettext("email_label") }}</label>
-                      <input type="email" class="form-control" id="recoverEmail">
-                    </div>
-                    <a href="javascript:void(0)" class="text-primary fw-medium" id="back-to-login-link">{{ gettext("back_to_login") }}</a>
-                    <button type="submit" class="btn btn-primary w-100 py-8 mt-4 rounded-2">{{ gettext("recover_button") }}</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+{% extends "layouts/main.hbs" %}
+
+{% block content %}
+  <!-- Login Form -->
+  <div id="login-form">
+    <h2 class="mb-3 fs-7 fw-bolder">{{ gettext("welcome_title") }}</h2>
+    <p class="mb-9">{{ gettext("dashboard_description") }}</p>
+    <form>
+      <div class="mb-3">
+        <label for="inputIdentificer" class="form-label">{{ gettext("username_or_email_label") }}</label>
+        <input type="email" class="form-control" id="inputIdentifier" aria-describedby="loginInputHelp">
       </div>
-    </div>
-    
-    <!-- Import JS Files -->
-    <script src="{{ url_for('static', filename='libs/jquery/dist/jquery.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='libs/simplebar/dist/simplebar.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
-    <!-- Core files -->
-    <script src="{{ url_for('static', filename='js/app.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app.init.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app-style-switcher.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/sidebarmenu.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+      <div class="mb-4">
+        <label for="inputPassword" class="form-label">{{ gettext("password_label") }}</label>
+        <input type="password" class="form-control" id="inputPassword">
+      </div>
+      <div class="d-flex align-items-center justify-content-between mb-4">
+        <div class="form-check">
+          <input class="form-check-input primary" type="checkbox" value="" id="flexCheckChecked" checked>
+          <label class="form-check-label text-dark" for="flexCheckChecked">
+            {{ gettext("remember_device") }}
+          </label>
+        </div>
+        <a class="text-primary fw-medium" href="javascript:void(0)" id="recover-password-link">{{ gettext("forgot_password") }}</a>
+      </div>
+      <a href="javascript:void(0)" id="login-button" class="btn btn-primary w-100 py-8 mb-4 rounded-2">{{ gettext("sign_in_button") }}</a>
+      <div class="d-flex align-items-center justify-content-center">
+        <p class="fs-4 mb-0 fw-medium">{{ gettext("new_to_platform") }}</p>
+        <a class="text-primary fw-medium ms-2" href="javascript:void(0)" id="create-account-link">{{ gettext("create_account") }}</a>
+      </div>
+    </form>
+  </div>
 
-    <!-- Custom JavaScript for Panel Switching -->
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
-        const recoverForm = document.getElementById('recover-form');
-        
-        document.getElementById('create-account-link').addEventListener('click', () => {
-          loginForm.classList.add('d-none');
-          registerForm.classList.remove('d-none');
-        });
+  <!-- Register Form -->
+  <div id="register-form" class="d-none">
+    <h2 class="mb-3 fs-7 fw-bolder">{{ gettext("register_title") }}</h2>
+    <form id="registerForm" action="/users/register" method="POST">
+      <div class="mb-3">
+        <label for="firstName" class="form-label">{{ gettext("first_name_label") }}</label>
+        <input type="text" class="form-control" id="firstName" name="first_name" required>
+      </div>
+      <div class="mb-3">
+        <label for="lastName" class="form-label">{{ gettext("last_name_label") }}</label>
+        <input type="text" class="form-control" id="lastName" name="last_name" required>
+      </div>
+      <div class="mb-3">
+        <label for="registerEmail" class="form-label">{{ gettext("email_label") }}</label>
+        <input type="email" class="form-control" id="registerEmail" name="email" required>
+      </div>
+      <div class="mb-3">
+        <label for="registerPassword" class="form-label">{{ gettext("password_label") }}</label>
+        <input type="password" class="form-control" id="registerPassword" name="password" required>
+      </div>
+      <div class="mb-3">
+        <label for="registerPin" class="form-label">{{ gettext("pin_label") }}</label>
+        <input type="text" class="form-control" id="registerPin" name="pin">
+      </div>
+      <div class="mb-3">
+        <label for="username" class="form-label">{{ gettext("username_label") }}</label>
+        <input type="text" class="form-control" id="username" name="username">
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="usePin" name="use_pin">
+        <label class="form-check-label" for="usePin">
+          {{ gettext("use_pin_label") }}
+        </label>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="newsletter" name="newsletter">
+        <label class="form-check-label" for="newsletter">
+          {{ gettext("newsletter_label") }}
+        </label>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="termsOfUse" name="terms_of_use" required>
+        <label class="form-check-label" for="termsOfUse">
+          {{ gettext("agree_terms_label") }} <a href="/terms-of-use" target="_blank">{{ gettext("terms_of_use_link") }}</a>
+        </label>
+      </div>
+      <a href="javascript:void(0)" class="text-primary fw-medium" id="back-to-login-link">{{ gettext("back_to_login") }}</a>
+      <button type="submit" class="btn btn-primary w-100 py-8 mt-4 rounded-2">{{ gettext("register_button") }}</button>
+    </form>
+  </div>
 
-        document.getElementById('recover-password-link').addEventListener('click', () => {
-          loginForm.classList.add('d-none');
-          recoverForm.classList.remove('d-none');
-        });
-
-        document.querySelectorAll('#back-to-login-link').forEach(link => {
-          link.addEventListener('click', () => {
-            loginForm.classList.remove('d-none');
-            registerForm.classList.add('d-none');
-            recoverForm.classList.add('d-none');
-          });
-        });
-
-        // Handle form submission
-        const registerFormElement = document.getElementById('registerForm');
-        registerFormElement.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const formData = new FormData(registerFormElement);
-          const data = Object.fromEntries(formData.entries());
-          try {
-            const response = await fetch('/users/register', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(data),
-            });
-            const result = await response.json();
-            if (response.ok) {
-              alert('Registration successful');
-              window.location.href = '/login';
-            } else {
-              alert(`Registration failed: ${result.message}`);
-            }
-          } catch (error) {
-            console.error('Registration error:', error);
-            alert('An unexpected error occurred. Please try again later.');
-          }
-        });
-      });
-    </script>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const loginButton = document.getElementById('login-button');
-
-        loginButton.addEventListener('click', async () => {
-          const identifier = document.getElementById('inputIdentifier').value;
-          const password = document.getElementById('inputPassword').value;
-
-          if (!identifier || !password) {
-            alert('Please enter your username/email and password.');
-            return;
-          }
-
-          try {
-            const response = await fetch('/users/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ identifier, password }),
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-              alert('Login successful');
-              window.location.href = '/dash'; // Redirect to dashboard
-            } else {
-              alert(`Login failed: ${result.message}`);
-            }
-          } catch (error) {
-            console.error('Login error:', error);
-            alert('An unexpected error occurred. Please try again later.');
-          }
-        });
-      });
-    </script>
-  </body>
-</html>
+  <!-- Recover Password Form -->
+  <div id="recover-form" class="d-none">
+    <h2 class="mb-3 fs-7 fw-bolder">{{ gettext("recover_password_title") }}</h2>
+    <form>
+      <div class="mb-3">
+        <label for="recoverEmail" class="form-label">{{ gettext("email_label") }}</label>
+        <input type="email" class="form-control" id="recoverEmail">
+      </div>
+      <a href="javascript:void(0)" class="text-primary fw-medium" id="back-to-login-link">{{ gettext("back_to_login") }}</a>
+      <button type="submit" class="btn btn-primary w-100 py-8 mt-4 rounded-2">{{ gettext("recover_button") }}</button>
+    </form>
+  </div>
+{% endblock %}

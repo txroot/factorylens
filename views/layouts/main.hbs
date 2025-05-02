@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <!-- Title -->
-    <title>{{t "welcome_title"}}</title>
+    <title>{{ gettext("welcome_title") }}</title>
+    <!-- Required Meta Tags -->
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="handheldfriendly" content="true" />
@@ -12,22 +13,49 @@
     <meta name="keywords" content="IoT Cloud Services" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <!-- Favicon -->
-    <link rel="shortcut icon" type="image/png" href="img/logos/favicon.ico" />
-    <link id="themeColors" rel="stylesheet" href="css/style.min.css" />
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/logos/favicon.ico') }}" />
+    <!-- Core CSS -->
+    <link id="themeColors" rel="stylesheet" href="{{ url_for('static', filename='css/style.min.css') }}" />
   </head>
   <body>
     <!-- Preloader -->
     <div class="preloader">
-      <img src="img/logos/favicon.ico" alt="loader" class="lds-ripple img-fluid" />
+      <img src="{{ url_for('static', filename='img/logos/favicon.ico') }}" alt="loader" class="lds-ripple img-fluid" />
     </div>
-    {{{body}}}
-    <script src="libs/jquery/dist/jquery.min.js"></script>
-    <script src="libs/simplebar/dist/simplebar.min.js"></script>
-    <script src="libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/app.min.js"></script>
-    <script src="js/app.init.js"></script>
-    <script src="js/app-style-switcher.js"></script>
-    <script src="js/sidebarmenu.js"></script>
-    <script src="js/custom.js"></script>
+    <!-- Body Wrapper -->
+    <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed">
+      <div class="position-relative overflow-hidden radial-gradient min-vh-100">
+        <div class="position-relative z-index-5">
+          <div class="row">
+            <div class="col-xl-7 col-xxl-8">
+              <a href="https://microlumin.pt" class="text-nowrap logo-img d-block px-4 py-9 w-100">
+                <img src="{{ url_for('static', filename='img/logos/logo-wt.png') }}" width="180" alt="">
+              </a>
+              <div class="d-none d-xl-flex align-items-center justify-content-center" style="height: calc(100vh - 80px);">
+                <img src="{{ url_for('static', filename='img/backgrounds/landing-page.svg') }}" alt="" class="img-fluid" width="500">
+              </div>
+            </div>
+            <div id="authentication-panel" class="col-xl-5 col-xxl-4">
+              <div class="authentication-login min-vh-100 bg-body row justify-content-center align-items-center p-4">
+                {% block content %}
+                {% endblock %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Import JS Files -->
+    <script src="{{ url_for('static', filename='libs/jquery/dist/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/simplebar/dist/simplebar.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- Core files -->
+    <script src="{{ url_for('static', filename='js/app.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.init.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app-style-switcher.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebarmenu.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
   </body>
 </html>

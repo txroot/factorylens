@@ -1,0 +1,40 @@
+<aside class="left-sidebar">
+  <div>
+    <div class="brand-logo d-flex align-items-center justify-content-between">
+      <a href="./index.html" class="logo-img">
+        <img src="{{ url_for('static', filename='img/logos/logo-wt.png') }}" width="180" alt="">
+      </a>
+      <div class="close-btn d-lg-none d-block sidebartoggler cursor-pointer" id="sidebarCollapse">
+        <i class="ti ti-x fs-8 text-muted"></i>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <ul id="sidebarnav">
+        <li class="sidebar-item">
+          <a href="/dashboard" class="sidebar-link">
+            <span>
+              <i class="ti ti-dashboard"></i>
+            </span>
+            <span class="hide-menu">{{ gettext("dashboard") }}</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="/settings" class="sidebar-link">
+            <span>
+              <i class="ti ti-settings"></i>
+            </span>
+            <span class="hide-menu">{{ gettext("settings") }}</span>
+          </a>
+        </li>
+        <li class="sidebar-item">
+          <a href="/profile" class="sidebar-link">
+            <span>
+              <i class="ti ti-user"></i>
+            </span>
+            <span class="hide-menu">{{ gettext("profile") }}</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</aside>

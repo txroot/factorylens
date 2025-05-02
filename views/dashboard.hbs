@@ -1,4 +1,11 @@
-<!-- views/dashboard.hbs -->
-<h1>Dashboard</h1>
-<div id="dashboard-content"></div>
-<script src="/js/dashboard.js"></script>
+{% extends "layouts/dash.hbs" %}
+
+{% block content %}
+  <!-- Content here -->
+  <div class="row">
+    <div class="col-lg-6">
+      <h3>{{ gettext("welcome_message") }}</h3>
+      <p>{{ gettext("dashboard_content_description") }}</p>
+    </div>
+  </div>
+{% endblock %}

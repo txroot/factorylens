@@ -1,15 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{title}}</title>
-    <link rel="stylesheet" href="/css/style.css">
-</head>
-<body>
-    {{> navbar }}
-    {{{body}}}
-    {{> footer }}
-    <script src="/js/{{script}}"></script>
-</body>
+  <head>
+    <!-- Title -->
+    <title>{{ gettext("dashboard_title") }}</title>
+    <!-- Required Meta Tags -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="handheldfriendly" content="true" />
+    <meta name="MobileOptimized" content="width" />
+    <meta name="description" content="Factory Lens Dashboard" />
+    <meta name="author" content="Microlumin" />
+    <meta name="keywords" content="Factory Lens Dashboard" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Favicon -->
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/logos/favicon.ico') }}" />
+    <!-- Core CSS -->
+    <link id="themeColors" rel="stylesheet" href="{{ url_for('static', filename='css/style.min.css') }}" />
+  </head>
+  <body>
+    <!-- Preloader -->
+    <div class="preloader">
+      <img src="{{ url_for('static', filename='img/logos/favicon.ico') }}" alt="loader" class="lds-ripple img-fluid" />
+    </div>
+
+    <!-- Main Wrapper -->
+    <div class="page-wrapper" id="main-wrapper" data-theme="blue_theme" data-layout="vertical" data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed">
+      
+      <!-- Sidebar Start -->
+      {% include "partials/sidebar.hbs" %}
+      <!-- Sidebar End -->
+
+      <!-- Body Wrapper -->
+      <div class="body-wrapper">
+        
+        <!-- Navbar Start -->
+        {% include "partials/navbar.hbs" %}
+        <!-- Navbar End -->
+
+        <!-- Content Start -->
+        <div class="container-fluid">
+          {% block content %}CONTENT HERE{% endblock %}
+        </div>
+        <!-- Content End -->
+
+        <!-- Footer Start -->
+        {% include "partials/footer.hbs" %}
+        <!-- Footer End -->
+      </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="{{ url_for('static', filename='libs/jquery/dist/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/simplebar/dist/simplebar.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.init.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebarmenu.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+  </body>
 </html>
