@@ -145,3 +145,6 @@ msgstr "Success is the sum of small efforts, repeated day in and day out"
 
 msgid "sidebar_quote_author"
 msgstr "Robert Collier"
+
+msgid "settings"
+msgstr "settings"

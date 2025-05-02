@@ -151,3 +151,6 @@ msgstr "O sucesso é a soma de pequenos esforços, repetidos dia após dia"
 
 msgid "sidebar_quote_author"
 msgstr "Robert Collier"
+
+msgid "settings"
+msgstr "definições"
