@@ -27,6 +27,7 @@ from routes.help import help_bp
 from routes.language import language_bp
 from routes.notifications import notifications_bp
 from routes.settings import settings_bp
+from routes.apps import apps_bp
 
 # Import Mail Client
 from utils.mail_client import mail
@@ -88,6 +89,7 @@ def create_app():
     app.register_blueprint(language_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(apps_bp)
 
     return app
 

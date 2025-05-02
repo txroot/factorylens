@@ -148,3 +148,15 @@ msgstr "Robert Collier"
 
 msgid "settings"
 msgstr "settings"
+
+msgid "video_player_title"
+msgstr "Video Player"
+
+msgid "video_player_description"
+msgstr "Select a camera to play its stream."
+
+msgid "stream_url"
+msgstr "Streaming URL"
+
+msgid "play_in_external"
+msgstr "Play Externally"
