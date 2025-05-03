@@ -144,7 +144,7 @@ msgid "communication"
 msgstr "Comunicação"
 
 msgid "file_storage"
-msgstr "Armazenamento de Ficheiros"
+msgstr "Armazenamento"
 
 msgid "sidebar_quote"
 msgstr "O sucesso é a soma de pequenos esforços, repetidos dia após dia"
