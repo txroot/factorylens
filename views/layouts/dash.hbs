@@ -54,14 +54,14 @@
       <!-- Sidebar End -->
 
       <!-- Body Wrapper -->
-      <div class="body-wrapper d-flex flex-column flex-grow-1">
+      <div class="body-wrapper d-flex flex-column flex-grow-1 min-v-0">
         
         <!-- Navbar Start -->
         {% include "partials/navbar.hbs" %}
         <!-- Navbar End -->
 
         <!-- Content Start -->
-        <div class="container-fluid flex-grow-1">
+        <div class="container-fluid flex-grow-1 h-0 overflow-auto">
           {% block content %}CONTENT HERE{% endblock %}
         </div>
         <!-- Content End -->
