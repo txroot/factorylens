@@ -56,15 +56,26 @@
         <!-- tiny spinner while ffmpeg starts -->
         <div class="spinner-border spinner-border-sm text-primary ms-2 d-none"></div>
 
-        <!-- Collapsible URL panel -->
+        <!-- Collapsible URL panel with Copy  Hide buttons -->
         <div class="collapse mt-3" id="urlCollapse-{{ cam.id }}">
-          <div class="input-group">
-            <input type="text" class="form-control" readonly value="{{ cam.stream_url }}"
-              style="word-break: break-all;">
-            <button class="btn btn-outline-secondary copy-btn" type="button" data-url="{{ cam.stream_url }}"
-              aria-label="Copy URL">
-              <i class="ti ti-copy"></i>
-            </button>
+          <div class="border rounded bg-light p-2">
+            <div class="input-group">
+              <!-- Multi-line textarea so long URLs wrap and are selectable -->
+              <textarea class="form-control" rows="2" readonly
+                style="resize: none; overflow: auto; white-space: pre-wrap;">{{ cam.stream_url }}</textarea>
+
+              <!-- Copy button -->
+              <button class="btn btn-outline-secondary copy-btn" type="button" data-url="{{ cam.stream_url }}"
+                aria-label="Copy URL">
+                <i class="ti ti-copy"></i>
+              </button>
+
+              <!-- Hide button -->
+              <button class="btn btn-outline-danger hide-url-btn" type="button"
+                data-target="urlCollapse-{{ cam.id }}" aria-label="Hide URL">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>

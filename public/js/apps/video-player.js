@@ -1,30 +1,51 @@
 // video-player.js
 (() => {
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('video-player.js loaded');
 
-    /* -------------------------- URL Popovers ------------------------- */
+    /* ---------------------------- Helpers ---------------------------- */
 
-    document.querySelectorAll('.url-popover').forEach(btn => {
-      const url = btn.dataset.url;
-      const content = `
-        <div class="d-flex align-items-center">
-          <code class="me-2 flex-grow-1" style="word-break:break-all;">${url}</code>
-          <button class="btn btn-sm btn-light copy-btn" data-url="${url}">
-            <i class="ti ti-copy"></i>
-          </button>
+    function showToast(message, variant = 'success') {
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-bg-${variant} border-0 position-fixed bottom-0 end-0 m-3`;
+      toastEl.role = 'alert';
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">${message}</div>
+          <button type="button" class="btn-close btn-close-white ms-auto me-2" data-bs-dismiss="toast"></button>
         </div>`;
-      new bootstrap.Popover(btn, {
-        html: true,
-        trigger: 'focus',
-        placement: 'auto',
-        title: 'Stream URL',
-        content
-      });
+      document.body.appendChild(toastEl);
+      new bootstrap.Toast(toastEl, { delay: 2000 }).show();
+    }
+
+    const clipboardCopy = async text => {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('Copied to clipboard');
+      } catch {
+        showToast('Copy failed', 'danger');
+      }
+    };
+
+    /* -------------------------- URL Buttons -------------------------- */
+
+    // Copy button (textarea or input)
+    document.body.addEventListener('click', e => {
+      const btn = e.target.closest('.copy-btn');
+      if (btn) {
+        const container = btn.closest('.input-group');
+        const input = container?.querySelector('input, textarea');
+        if (input) clipboardCopy(input.value);
+      }
     });
 
+    // Hide button
     document.body.addEventListener('click', e => {
-      const copy = e.target.closest('.copy-btn');
-      if (copy) clipboardCopy(copy.dataset.url);
+      const btn = e.target.closest('.hide-url-btn');
+      if (btn) {
+        const el = document.getElementById(btn.dataset.target);
+        if (el) bootstrap.Collapse.getOrCreateInstance(el).hide();
+      }
     });
 
     /* ------------------------- Snapshot Modal ------------------------ */
@@ -46,7 +67,6 @@
         const camId   = btn.dataset.camId;
         const camName = btn.dataset.camName;
 
-        // timestamp: YYYY-MM-DD_HH-mm
         const now = new Date();
         const ts = [
           now.getFullYear(),
@@ -56,14 +76,7 @@
           String(now.getHours()).padStart(2, '0') + '-' +
           String(now.getMinutes()).padStart(2, '0') + '-' +
           String(now.getSeconds()).padStart(2, '0');
-        const titleTs = [
-          now.getFullYear(),
-          String(now.getMonth() + 1).padStart(2, '0'),
-          String(now.getDate()).padStart(2, '0')
-        ].join('-') + " / " +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0') + ':' +
-          String(now.getSeconds()).padStart(2, '0');
+        const titleTs = ts.replace('_', ' / ').replace(/-/g, ':');
 
         currentTimestamp = ts;
         currentFilenameBase = `snapshot_${camName}_${ts}`;
@@ -95,7 +108,7 @@
       }
     });
 
-    // PDF generation from loaded snapshot image
+    // PDF generation
     pdfBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       spinnerOverlay.classList.remove('d-none');
@@ -183,6 +196,5 @@
         showToast('HLS not supported', 'warning');
       }
     }
-
   });
 })();
