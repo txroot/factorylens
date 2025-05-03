@@ -17,11 +17,7 @@
               <th data-field="category">{{ t("settings_device_category") }}</th>
               <th data-field="status">{{ t("settings_device_status") }}</th>
               <th data-field="last_seen">{{ t("settings_device_last_seen") }}</th>
-              <th
-                data-field="id"
-                data-formatter="actionFmt"
-                data-align="center"
-                data-width="160"
+              <th data-field="id" data-formatter="actionFmt" data-align="center" data-width="160"
                 data-classes="text-nowrap">
                 {{ t("settings_device_actions") }}
               </th>
@@ -55,12 +51,12 @@
         <!-- tabs -->
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#basicTab" role="tab">
+            <button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#basicTab" role="tab">
               {{ t("settings_device_basic") }}
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#advTab" role="tab">
+            <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#advTab" role="tab">
               {{ t("settings_device_advanced") }}
             </button>
           </li>
@@ -137,8 +133,10 @@
       </div><!-- modal‑body -->
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ t("settings_device_cancel") }}</button>
-        <button class="btn btn-primary" type="submit">{{ t("settings_device_save") }}</button>
+        <button type="button" class="btn btn-sm btn-dark" data-bs-dismiss="modal">
+          {{ t("settings_device_cancel") }}
+        </button>
+        <button class="btn btn-sm btn-primary" type="submit">{{ t("settings_device_save") }}</button>
       </div>
     </form>
   </div>
@@ -156,14 +154,10 @@
 
       <!-- Footer: buttons centered -->
       <div class="modal-footer justify-content-center border-0">
-        <button type="button"
-                class="btn btn-sm btn-secondary me-2"
-                data-bs-dismiss="modal">
+        <button type="button" class="btn btn-sm btn-dark me-2" data-bs-dismiss="modal">
           {{ t("settings_device_cancel") }}
         </button>
-        <button type="button"
-                class="btn btn-sm btn-danger"
-                id="confirmYesBtn">
+        <button type="button" class="btn btn-sm btn-danger" id="confirmYesBtn">
           {{ t("settings_device_delete") }}
         </button>
       </div>
@@ -176,16 +170,16 @@
 
 {% block scripts %}
 <!-- Translation map for JS -->
-  <script>
-    window.translations = {
-      settings_device_new:            {{ t("settings_device_new")            | tojson }},
-      settings_device_edit:           {{ t("settings_device_edit")           | tojson }},
-      settings_device_delete_confirm: {{ t("settings_device_delete_confirm") | tojson }},
-      settings_device_deleted:        {{ t("settings_device_deleted")        | tojson }},
-      settings_device_saved:          {{ t("settings_device_saved")          | tojson }}
-    };
-    window.t = key => window.translations[key] || key;
-  </script>
+<script>
+  window.translations = {
+    settings_device_new: {{ t("settings_device_new") | tojson }},
+    settings_device_edit: {{ t("settings_device_edit") | tojson }},
+    settings_device_delete_confirm: {{ t("settings_device_delete_confirm") | tojson }},
+    settings_device_deleted: {{ t("settings_device_deleted") | tojson }},
+    settings_device_saved: {{ t("settings_device_saved") | tojson }}
+  };
+  window.t = key => window.translations[key] || key;
+</script>
 <script src="https://unpkg.com/tableexport.jquery.plugin/tableExport.min.js"></script>
 <script src="{{ url_for('static', filename='libs/bootstrap-table/dist/bootstrap-table.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/settings/device_settings.js') }}"></script>
