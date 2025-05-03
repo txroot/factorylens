@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify, current_app
 from flask import url_for
 from models.camera import Camera
 import subprocess, os, time, shlex
+import shutil
 
 apps_bp = Blueprint('apps', __name__, url_prefix='/apps')
 
@@ -58,8 +59,10 @@ def start_stream(cam_id):
 
     # 4) optionally capture stderr to file so you can inspect connection/auth errors
     err_log = os.path.join(out_dir, 'ffmpeg-error.log')
+    # launch and store the process
     with open(err_log, 'ab') as errf:
-        subprocess.Popen(cmd, stderr=errf)
+        p = subprocess.Popen(cmd, stderr=errf)
+    ffmpeg_processes[cam_id] = p
 
     # 5) wait up to 5s for the playlist to appear
     for _ in range(10):
@@ -76,11 +79,22 @@ def start_stream(cam_id):
     )
 })
     
-@apps_bp.route('/apps/video-player/stop/<int:cam_id>', methods=['POST'])
+@apps_bp.route('/video-player/stop/<int:cam_id>', methods=['POST'])
 def stop_stream(cam_id):
+    # 1) Terminate the ffmpeg process if running
     p = ffmpeg_processes.pop(cam_id, None)
     if p:
         p.terminate()
         current_app.logger.info("Stopped ffmpeg for camera %d", cam_id)
-    return ('', 204)
 
+    # 2) Delete the HLS output directory
+    cam = Camera.query.get_or_404(cam_id)
+    out_dir = os.path.join(current_app.static_folder, 'streams', cam.serial_number)
+    if os.path.isdir(out_dir):
+        try:
+            shutil.rmtree(out_dir)
+            current_app.logger.info("Removed stream directory %s", out_dir)
+        except Exception as e:
+            current_app.logger.error("Error removing %s: %s", out_dir, e)
+
+    return ('', 204)
