@@ -1,5 +1,107 @@
 {% extends "layouts/dash.hbs" %}
+
 {% block content %}
-  <h2>{{ gettext("device_settings") }}</h2>
-  <!-- TODO -->
+<div class="row g-3 mt-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="border-bottom title-part-padding d-flex justify-content-between align-items-center">
+        <h4 class="card-title mb-0">{{ t("settings_device_title") }}</h4>
+      </div>
+      <div class="card-body">
+        <table id="devicesTable"
+               class="table table-striped"
+               data-bs-toggle="table"
+               data-url="/settings/devices/data"
+               data-search="true"
+               data-show-refresh="true"
+               data-mobile-responsive="true"
+               data-pagination="true">
+          <thead>
+            <tr>
+              <th data-field="name">{{ t("settings_device_name") }}</th>
+              <th data-field="type">{{ t("settings_device_type") }}</th>
+              <th data-field="category">{{ t("settings_device_category") }}</th>
+              <th data-field="status">{{ t("settings_device_status") }}</th>
+              <th data-field="last_seen">{{ t("settings_device_last_seen") }}</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating ADD button -->
+<button id="addDeviceBtn"
+        class="btn btn-primary rounded-circle shadow-lg position-fixed end-0 me-5"
+        style="bottom: 120px; right: 24px; width: 64px; height: 64px; z-index: 1055;"
+        data-bs-toggle="tooltip"
+        title="{{ t('settings_device_add') }}">
+  <i class="ti ti-plus fs-4 text-white"></i>
+</button>
+
+<!-- Modal -->
+<div class="modal fade" id="deviceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="deviceForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ t("settings_device_new") }}</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body g-3">
+        <div class="form-floating mb-3">
+          <input class="form-control" name="name" placeholder="Name" required>
+          <label>{{ t("settings_device_name") }} *</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input class="form-control" name="serial_number" placeholder="SN">
+          <label>{{ t("settings_device_serial_number") }}</label>
+        </div>
+        <div class="row g-2">
+          <div class="col-6 form-floating mb-3">
+            <select class="form-select" name="device_type">
+              <option value="generic">generic</option>
+              <option value="shelly1">shelly1</option>
+              <option value="shelly2">shelly2</option>
+              <option value="camera">camera</option>
+            </select>
+            <label>{{ t("settings_device_type") }}</label>
+          </div>
+          <div class="col-6 form-floating mb-3">
+            <select class="form-select" name="category">
+              <option value="iot">IoT</option>
+              <option value="camera">camera</option>
+              <option value="logger">logger</option>
+              <option value="messenger">messenger</option>
+              <option value="processor">processor</option>
+            </select>
+            <label>{{ t("settings_device_category") }}</label>
+          </div>
+        </div>
+        <div class="form-floating mb-3">
+          <input class="form-control" name="mqtt_client_id" placeholder="client‑id" required>
+          <label>{{ t("settings_device_mqtt_id") }} *</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input class="form-control" name="topic_prefix" placeholder="topic/…​" required>
+          <label>{{ t("settings_device_topic_prefix") }} *</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input class="form-control" name="location" placeholder="{{ t('settings_device_location') }}">
+          <label>{{ t("settings_device_location") }}</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{{ t("settings_device_cancel") }}</button>
+        <button class="btn btn-primary" type="submit">{{ t("settings_device_save") }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/tableexport.jquery.plugin/tableExport.min.js"></script>
+<script src="{{ url_for('static', filename='libs/bootstrap-table/dist/bootstrap-table.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/device_settings.js') }}"></script>
 {% endblock %}

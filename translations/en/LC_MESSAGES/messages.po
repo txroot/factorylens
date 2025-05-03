@@ -175,3 +175,48 @@ msgstr "Download Snapshot"
 
 msgid "download_pdf"
 msgstr "Download PDF"
+
+msgid "settings_device_title"
+msgstr "Devices"
+
+msgid "settings_device_name"
+msgstr "Name"
+
+msgid "settings_device_type"
+msgstr "Type"
+
+msgid "settings_device_category"
+msgstr "Category"
+
+msgid "settings_device_status"
+msgstr "Status"
+
+msgid "settings_device_last_seen"
+msgstr "Last Seen"
+
+msgid "settings_device_add"
+msgstr "Add Device"
+
+msgid "settings_device_new"
+msgstr "New Device"
+
+msgid "settings_device_serial_number"
+msgstr "Serial Number"
+
+msgid "settings_device_mqtt_id"
+msgstr "MQTT Client ID"
+
+msgid "settings_device_topic_prefix"
+msgstr "Topic Prefix"
+
+msgid "settings_device_location"
+msgstr "Location"
+
+msgid "settings_device_save"
+msgstr "Save"
+
+msgid "settings_device_cancel"
+msgstr "Cancel"
+
+msgid "settings_device_saved"
+msgstr "Device saved successfully"

@@ -181,3 +181,48 @@ msgstr "Descarregar instantâneo"
 
 msgid "download_pdf"
 msgstr "Descarregar PDF"
+
+msgid "settings_device_title"
+msgstr "Dispositivos"
+
+msgid "settings_device_name"
+msgstr "Nome"
+
+msgid "settings_device_type"
+msgstr "Tipo"
+
+msgid "settings_device_category"
+msgstr "Categoria"
+
+msgid "settings_device_status"
+msgstr "Estado"
+
+msgid "settings_device_last_seen"
+msgstr "Última Atividade"
+
+msgid "settings_device_add"
+msgstr "Adicionar Dispositivo"
+
+msgid "settings_device_new"
+msgstr "Novo Dispositivo"
+
+msgid "settings_device_serial_number"
+msgstr "Número de Série"
+
+msgid "settings_device_mqtt_id"
+msgstr "ID do Cliente MQTT"
+
+msgid "settings_device_topic_prefix"
+msgstr "Prefixo do Tópico"
+
+msgid "settings_device_location"
+msgstr "Localização"
+
+msgid "settings_device_save"
+msgstr "Guardar"
+
+msgid "settings_device_cancel"
+msgstr "Cancelar"
+
+msgid "settings_device_saved"
+msgstr "Dispositivo guardado com sucesso"

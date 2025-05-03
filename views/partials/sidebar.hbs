@@ -83,38 +83,11 @@
                     <span class="hide-menu">{{ gettext("settings") }}</span>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link has-arrow" href="#" aria-expanded="false">
-                        <span><i class="ti ti-settings"></i></span>
-                        <span class="hide-menu text-capitalize">{{ gettext("settings") }}</span>
-                    </a>
-                    <ul class="collapse first-level">
-                        <li class="sidebar-item">
-                            <a href="{{ url_for('settings.cameras') }}" class="sidebar-link">
-                                <span><i class="ti ti-camera"></i></span>
-                                <span class="hide-menu text-capitalize">{{ gettext("cameras") }}</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a href="{{ url_for('settings.devices') }}" class="sidebar-link">
-                                <span><i class="ti ti-devices"></i></span>
-                                <span class="hide-menu text-capitalize">{{ gettext("devices") }}</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a href="{{ url_for('settings.communication') }}" class="sidebar-link">
-                                <span><i class="ti ti-message-circle"></i></span>
-                                <span class="hide-menu text-capitalize">{{ gettext("communication") }}</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a href="{{ url_for('settings.file_storage') }}" class="sidebar-link">
-                                <span><i class="ti ti-database"></i></span>
-                                <span class="hide-menu">{{ gettext("file_storage") }}</span>
-                            </a>
-                        </li>
-                    </ul>
+                <a class="sidebar-link" href="/settings/devices">
+                    <span><i class="ti ti-devices-bolt"></i></span>
+                    <span class="hide-menu text-capitalize">{{ t("devices") }}</span>
+                </a>
                 </li>
-
             </ul>
         </nav>
     </div>
