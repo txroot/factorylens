@@ -60,6 +60,11 @@
               {{ t("settings_device_advanced") }}
             </button>
           </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#paramTab" role="tab">
+              {{ t("settings_device_parameters") }}
+            </button>
+          </li>
         </ul>
 
         <div class="tab-content">
@@ -129,6 +134,16 @@
               <label>{{ t("settings_device_description") }}</label>
             </div>
           </div>
+          
+          <!-- PARAMETERS -->
+          <div class="tab-pane fade" id="paramTab" role="tabpanel">
+            <div class="form-floating mb-3">
+              <textarea class="form-control" name="parameters" style="height:200px; font-family:monospace;"
+                        placeholder='{"foo": "bar"}'></textarea>
+              <label>{{ t("settings_device_parameters") }}</label>
+            </div>
+            <small class="text-muted">{{ t("settings_device_parameters_help") }}</small>
+          </div>
         </div>
       </div><!-- modal‑body -->
 
@@ -173,10 +188,10 @@
 <script>
   window.translations = {
     settings_device_new: {{ t("settings_device_new") | tojson }},
-    settings_device_edit: {{ t("settings_device_edit") | tojson }},
-    settings_device_delete_confirm: {{ t("settings_device_delete_confirm") | tojson }},
-    settings_device_deleted: {{ t("settings_device_deleted") | tojson }},
-    settings_device_saved: {{ t("settings_device_saved") | tojson }}
+  settings_device_edit: {{ t("settings_device_edit") | tojson }},
+  settings_device_delete_confirm: {{ t("settings_device_delete_confirm") | tojson }},
+  settings_device_deleted: {{ t("settings_device_deleted") | tojson }},
+  settings_device_saved: {{ t("settings_device_saved") | tojson }}
   };
   window.t = key => window.translations[key] || key;
 </script>

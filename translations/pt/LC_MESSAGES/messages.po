@@ -259,3 +259,9 @@ msgstr "Eliminar"
 
 msgid "settings_device_cancel"
 msgstr "Cancelar"
+
+msgid "settings_device_parameters"
+msgstr "Parâmetros"
+
+msgid "settings_device_parameters_help"
+msgstr "Insira um JSON válido com as configurações avançadas."

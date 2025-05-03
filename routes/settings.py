@@ -47,6 +47,7 @@ def device_item(dev_id):
             "poll_interval": dev.poll_interval,
             "poll_interval_unit": dev.poll_interval_unit,
             "description": dev.description,
+            "parameters": dev.parameters or {}
         })
 
     if request.method == "PUT":
@@ -58,6 +59,9 @@ def device_item(dev_id):
         ):
             if f in data:
                 setattr(dev, f, data[f])
+                
+        if "parameters" in data:
+            dev.parameters = data["parameters"]
         db.session.commit()
         return jsonify(ok=True)
 
@@ -85,6 +89,7 @@ def add_device():
         poll_interval=data.get("poll_interval", 60),
         poll_interval_unit=data.get("poll_interval_unit", "sec"),
         description=data.get("description"),
+        parameters=data.get("parameters", {}),
         enabled=True,
     )
     db.session.add(dev)

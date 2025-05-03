@@ -253,3 +253,9 @@ msgstr "Delete"
 
 msgid "settings_device_cancel"
 msgstr "Cancel"
+
+msgid "settings_device_parameters"
+msgstr "Parameters"
+
+msgid "settings_device_parameters_help"
+msgstr "Enter a valid JSON with advanced configuration."
