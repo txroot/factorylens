@@ -12,7 +12,8 @@ RUN apt-get update && \
       default-libmysqlclient-dev \
       python3-dev \
       curl \
-    && rm -rf /var/lib/apt/lists/*
+      ffmpeg \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Download wait-for-it script
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /usr/local/bin/wait-for-it.sh

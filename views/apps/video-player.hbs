@@ -17,14 +17,20 @@
           <i class="ti ti-player-play"></i>
         </button>
 
-        <!-- raw URL (opens VLC etc.) -->
-        <a href="{{ cam.stream_url }}" target="_blank" class="btn btn-outline-secondary">
+        <!-- Check URL (alerts the raw stream_url) -->
+        <button type="button" class="btn btn-secondary check-btn me-2" data-stream-url="{{ cam.stream_url }}">
+          <i class="ti ti-link"></i>
+        </button>
+
+        <!-- Open raw URL externally -->
+        <a href="{{ cam.stream_url }}" target="_blank" class="btn btn-outline-secondary me-2">
           <i class="ti ti-external-link"></i>
         </a>
 
         <!-- small spinner shown while JS waits -->
         <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status"></div>
       </div>
+
     </div>
   </div>
   {% endfor %}

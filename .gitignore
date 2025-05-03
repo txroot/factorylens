@@ -10,3 +10,4 @@ mysql-data/ibdata1
 mysql-data/ibtmp1
 mysql-data/multi-master.info
 mysql-data/mysql_upgrade_info
+public/streams/
