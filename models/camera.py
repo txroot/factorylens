@@ -2,12 +2,17 @@
 
 from extensions import db
 from datetime import datetime
+from sqlalchemy.orm import relationship
 
 class Camera(db.Model):
     __tablename__ = 'cameras'
 
     # Primary key
     id = db.Column(db.Integer, primary_key=True)
+
+    # Foreign key to Device table (if applicable)
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'))
+    device = relationship('Device', backref='cameras')
 
     # Human-friendly name
     name = db.Column(db.String(100), nullable=False, unique=True)
