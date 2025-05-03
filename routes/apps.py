@@ -5,6 +5,7 @@ import subprocess, os, time, shlex
 import shutil
 import io
 import cv2
+import json
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
@@ -27,63 +28,145 @@ def check_playlist(cam_id):
       "full_disk_path": path
     }
 
-@apps_bp.route('/video-player/start/<int:cam_id>', methods=['POST'])
+# --- helper ------------------------------------------------------------
+def probe_rtsp_codec(rtsp_url, timeout=2):
+    """
+    Return (codec_name, profile) for the first video stream in an RTSP URL.
+    Uses an SDP‑only probe (analyzeduration 0, probesize 32) so it finishes fast.
+    """
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-rtsp_transport", "tcp",
+        "-timeout", "1500000",          # μs → 1.5 s handshake timeout
+        "-analyzeduration", "0",
+        "-probesize", "32",
+        "-select_streams", "v:0",
+        "-show_entries", "stream=codec_name,profile",
+        "-of", "json",
+        rtsp_url
+    ]
+    out = subprocess.check_output(cmd, timeout=timeout)
+    streams = json.loads(out)["streams"]
+    if not streams:
+        return None, None
+    s = streams[0]
+    return s.get("codec_name"), s.get("profile")
+
+# -----------------------------------------------------------------------
+@apps_bp.route("/video-player/start/<int:cam_id>", methods=["POST"])
 def start_stream(cam_id):
     cam = Camera.query.get_or_404(cam_id)
 
-    # where HLS files will go:
-    out_dir = os.path.join('public', 'streams', cam.serial_number)
+    # where HLS files will go
+    out_dir = os.path.join("public", "streams", cam.serial_number)
     os.makedirs(out_dir, exist_ok=True)
-    playlist = os.path.join(out_dir, 'index.m3u8')
+    playlist = os.path.join(out_dir, "index.m3u8")
 
-    # 1) reconstruct the FULL RTSP URL (with credentials) if present
+    # reconstruct full RTSP URL
     if cam.username and cam.password:
-        # if you have a suffix column, use that; otherwise grab path from cam.stream_url
-        suffix = getattr(cam, 'stream_url_suffix', '') or ''
-        input_url = f"rtsp://{cam.username}:{cam.password}@{cam.address}:{cam.port}{suffix}"
+        suffix = getattr(cam, "stream_url_suffix", "") or ""
+        input_url = (
+            f"rtsp://{cam.username}:{cam.password}@{cam.address}:{cam.port}{suffix}"
+        )
     else:
         input_url = cam.stream_url
 
-    # 2) build the ffmpeg command
-    cmd = [
-        'ffmpeg', '-nostdin',
-        '-rtsp_transport', 'tcp',
-        '-i', input_url,
-        '-c:v', 'copy', '-c:a', 'copy',
-        '-f', 'hls',
-        '-hls_time', '2',
-        '-hls_list_size', '3',
-        '-hls_flags', 'delete_segments',
-        playlist
-    ]
+    # ---------- decide copy vs transcode ----------
+    try:
+        codec, profile = probe_rtsp_codec(input_url)
+        current_app.logger.info(
+            "RTSP probe for cam %s: codec=%s profile=%s", cam.id, codec, profile
+        )
+    except subprocess.TimeoutExpired:
+        codec, profile = None, None
+        current_app.logger.warning("RTSP probe timed out for cam %s", cam.id)
 
-    # 3) print/log the exact command
-    system_command = " ".join(shlex.quote(part) for part in cmd)
-    print("System Command:", system_command)
-    current_app.logger.info("System Command: %s", system_command)
+    # “safe” H.264 profiles that browsers decode natively
+    SAFE_H264 = {"Constrained Baseline", "Baseline", "Main", "High"}
 
-    # 4) optionally capture stderr to file so you can inspect connection/auth errors
-    err_log = os.path.join(out_dir, 'ffmpeg-error.log')
-    # launch and store the process
-    with open(err_log, 'ab') as errf:
+    if codec == "h264" and (profile in SAFE_H264 or profile is None):
+        video_args = ["-c:v", "copy"]  # zero‑CPU copy
+    else:
+        # software x264 transcode (1 stream ≈ 80 % of one Pi‑5 core)
+        video_args = [
+            "-vf",
+            "scale=w='min(1280,iw)':h=-2,format=yuv420p",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-profile:v",
+            "high",
+            "-level",
+            "4.0",
+            "-g",
+            "50",
+            "-keyint_min",
+            "50",
+            "-sc_threshold",
+            "0",
+            "-b:v",
+            "2500k",
+            "-maxrate",
+            "3000k",
+            "-bufsize",
+            "6000k",
+        ]
+
+    # ---------- build the ffmpeg command ----------
+    cmd = (
+        [
+            "ffmpeg",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-rtsp_transport",
+            "tcp",
+            "-i",
+            input_url,
+        ]
+        + video_args
+        + [
+            "-an",
+            "-f",
+            "hls",
+            "-hls_time",
+            "2",
+            "-hls_list_size",
+            "3",
+            "-hls_flags",
+            "delete_segments+independent_segments",
+            playlist,
+        ]
+    )
+
+    # log full command
+    current_app.logger.info("FFmpeg cmd: %s", " ".join(map(shlex.quote, cmd)))
+
+    # launch ffmpeg
+    err_log = os.path.join(out_dir, "ffmpeg-error.log")
+    with open(err_log, "ab") as errf:
         p = subprocess.Popen(cmd, stderr=errf)
     ffmpeg_processes[cam_id] = p
 
-    # 5) wait up to 5s for the playlist to appear
+    # wait up to 5 s for the playlist
     for _ in range(10):
         if os.path.exists(playlist):
             break
         time.sleep(0.5)
     else:
-        current_app.logger.warning("Playlist still missing after 5s; see %s", err_log)
+        current_app.logger.warning(
+            "Playlist still missing after 5 s; see %s", err_log
+        )
 
-    return jsonify({
-    "hls_url": url_for(
-        'static',
-        filename=f"streams/{cam.serial_number}/index.m3u8"
+    return jsonify(
+        {
+            "hls_url": url_for(
+                "static", filename=f"streams/{cam.serial_number}/index.m3u8"
+            )
+        }
     )
-})
-    
+  
 @apps_bp.route('/video-player/stop/<int:cam_id>', methods=['POST'])
 def stop_stream(cam_id):
     # 1) Terminate the ffmpeg process if running
