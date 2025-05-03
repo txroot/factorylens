@@ -226,3 +226,36 @@ msgstr "Cancelar"
 
 msgid "settings_device_saved"
 msgstr "Dispositivo guardado com sucesso"
+
+msgid "settings_device_basic"
+msgstr "Básico"
+
+msgid "settings_device_advanced"
+msgstr "Avançado"
+
+msgid "settings_device_edit"
+msgstr "Editar Dispositivo"
+
+msgid "settings_device_actions"
+msgstr "Ações"
+
+msgid "settings_device_poll_interval"
+msgstr "Intervalo de Polling"
+
+msgid "settings_device_poll_unit"
+msgstr "Unidade"
+
+msgid "settings_device_description"
+msgstr "Descrição"
+
+msgid "settings_device_delete_confirm"
+msgstr "Confirma eliminar este dispositivo?"
+
+msgid "settings_device_deleted"
+msgstr "Dispositivo eliminado"
+
+msgid "settings_device_delete"
+msgstr "Eliminar"
+
+msgid "settings_device_cancel"
+msgstr "Cancelar"
