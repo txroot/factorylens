@@ -1,30 +1,6 @@
+// video-player.js
 (() => {
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('video-player.js loaded');
-
-    /* ---------------------------- Helpers ---------------------------- */
-
-    function showToast(message, variant = 'success') {
-      const toastEl = document.createElement('div');
-      toastEl.className = `toast align-items-center text-bg-${variant} border-0 position-fixed bottom-0 end-0 m-3`;
-      toastEl.role = 'alert';
-      toastEl.innerHTML = `
-        <div class="d-flex">
-          <div class="toast-body">${message}</div>
-          <button type="button" class="btn-close btn-close-white ms-auto me-2" data-bs-dismiss="toast"></button>
-        </div>`;
-      document.body.appendChild(toastEl);
-      new bootstrap.Toast(toastEl, { delay: 2000 }).show();
-    }
-
-    const clipboardCopy = async text => {
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast('Copied to clipboard');
-      } catch {
-        showToast('Copy failed', 'danger');
-      }
-    };
 
     /* -------------------------- URL Popovers ------------------------- */
 
