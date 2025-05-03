@@ -1,65 +1,165 @@
 (() => {
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('video‑player.js loaded');
+    console.log('video-player.js loaded');
 
-    /* ------------------------------------------------- helpers */
+    /* ---------------------------- Helpers ---------------------------- */
+
+    function showToast(message, variant = 'success') {
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-bg-${variant} border-0 position-fixed bottom-0 end-0 m-3`;
+      toastEl.role = 'alert';
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">${message}</div>
+          <button type="button" class="btn-close btn-close-white ms-auto me-2" data-bs-dismiss="toast"></button>
+        </div>`;
+      document.body.appendChild(toastEl);
+      new bootstrap.Toast(toastEl, { delay: 2000 }).show();
+    }
+
     const clipboardCopy = async text => {
       try {
         await navigator.clipboard.writeText(text);
-        bootstrap.Toast ? new bootstrap.Toast(
-          Object.assign(document.createElement('div'), {
-            className: 'toast align-items-center text-bg-success border-0 position-fixed bottom-0 end-0 m-3',
-            role: 'alert',
-            innerHTML: `<div class="d-flex"><div class="toast-body">Copied!</div></div>`
-          })
-        ).show() : alert('Copied!');
-      } catch (e) { alert('Copy failed'); }
+        showToast('Copied to clipboard');
+      } catch {
+        showToast('Copy failed', 'danger');
+      }
     };
 
-    /* ------------------------------------------------- popovers */
+    /* -------------------------- URL Popovers ------------------------- */
+
     document.querySelectorAll('.url-popover').forEach(btn => {
       const url = btn.dataset.url;
-      const html   =
-        `<div class="d-flex align-items-center">
-           <code class="me-2 flex-grow-1" style="word-break:break-all;">${url}</code>
-           <button class="btn btn-sm btn-light copy-btn" data-url="${url}">
-             <i class="ti ti-copy"></i>
-           </button>
-         </div>`;
+      const content = `
+        <div class="d-flex align-items-center">
+          <code class="me-2 flex-grow-1" style="word-break:break-all;">${url}</code>
+          <button class="btn btn-sm btn-light copy-btn" data-url="${url}">
+            <i class="ti ti-copy"></i>
+          </button>
+        </div>`;
       new bootstrap.Popover(btn, {
         html: true,
         trigger: 'focus',
         placement: 'auto',
-        title: 'URL',
-        content: html
+        title: 'Stream URL',
+        content
       });
     });
 
-    // delegate copy‑btn clicks
     document.body.addEventListener('click', e => {
-      if (e.target.closest('.copy-btn')) {
-        const url = e.target.closest('.copy-btn').dataset.url;
-        clipboardCopy(url);
-      }
+      const copy = e.target.closest('.copy-btn');
+      if (copy) clipboardCopy(copy.dataset.url);
     });
 
-    /* ------------------------------------------------- snapshot refresh */
-    const snapshotModal   = new bootstrap.Modal('#snapshotModal');
-    const snapshotImgElem = document.getElementById('snapshot-img');
+    /* ------------------------- Snapshot Modal ------------------------ */
+
+    const snapshotModalEl = document.getElementById('snapshotModal');
+    const snapshotModal   = new bootstrap.Modal(snapshotModalEl);
+    const snapshotImg     = document.getElementById('snapshot-img');
+    const spinnerOverlay  = document.getElementById('snapshot-spinner');
+    const fullBtn         = document.getElementById('snapshot-full-btn');
+    const downloadBtn     = document.getElementById('snapshot-download-btn');
+    const pdfBtn          = document.getElementById('snapshot-pdf-btn');
+    const titleEl         = document.getElementById('snapshotModalTitle');
+
+    let currentTimestamp = '';
+    let currentFilenameBase = '';
 
     document.querySelectorAll('.snapshot-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const camId = btn.dataset.camId;
-        const src   = `/apps/video-player/snapshot/${camId}?t=${Date.now()}`; // cache‑bust
-        snapshotImgElem.src = src;
+      btn.addEventListener('click', () => {
+        const camId   = btn.dataset.camId;
+        const camName = btn.dataset.camName;
+
+        // timestamp: YYYY-MM-DD_HH-mm
+        const now = new Date();
+        const ts = [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, '0'),
+          String(now.getDate()).padStart(2, '0')
+        ].join('-') + '_' +
+          String(now.getHours()).padStart(2, '0') + '-' +
+          String(now.getMinutes()).padStart(2, '0') + '-' +
+          String(now.getSeconds()).padStart(2, '0');
+        const titleTs = [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, '0'),
+          String(now.getDate()).padStart(2, '0')
+        ].join('-') + " / " +
+          String(now.getHours()).padStart(2, '0') + ':' +
+          String(now.getMinutes()).padStart(2, '0') + ':' +
+          String(now.getSeconds()).padStart(2, '0');
+
+        currentTimestamp = ts;
+        currentFilenameBase = `snapshot_${camName}_${ts}`;
+
+        titleEl.textContent = `Snapshot ${titleTs}`;
+        spinnerOverlay.classList.remove('d-none');
+        snapshotImg.classList.add('d-none');
+
+        const jpgUrl = `/apps/video-player/snapshot/${camId}?t=${Date.now()}`;
+        snapshotImg.src = jpgUrl;
+
+        downloadBtn.href = jpgUrl;
+        downloadBtn.download = `${currentFilenameBase}.jpg`;
+
         snapshotModal.show();
       });
     });
 
-    /* ------------------------------------------------- play in modal */
+    snapshotImg.addEventListener('load', () => {
+      spinnerOverlay.classList.add('d-none');
+      snapshotImg.classList.remove('d-none');
+    });
+
+    fullBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        snapshotImg.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // PDF generation from loaded snapshot image
+    pdfBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      spinnerOverlay.classList.remove('d-none');
+
+      try {
+        const resJpg = await fetch(snapshotImg.src);
+        const blobJpg = await resJpg.blob();
+
+        const form = new FormData();
+        form.append('image', blobJpg, `${currentFilenameBase}.jpg`);
+
+        const resPdf = await fetch('/apps/video-player/snapshot/pdf', {
+          method: 'POST',
+          body: form
+        });
+
+        if (!resPdf.ok) throw new Error(`PDF error: ${resPdf.status}`);
+
+        const pdfBlob = await resPdf.blob();
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentFilenameBase}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to generate PDF', 'danger');
+      } finally {
+        spinnerOverlay.classList.add('d-none');
+      }
+    });
+
+    /* ---------------------- Video-Player (HLS) ----------------------- */
+
     const videoModalEl = document.getElementById('videoModal');
     const modalVideo   = document.getElementById('modal-video');
-    const bsModal      = new bootstrap.Modal(videoModalEl);
+    const bsVideoModal = new bootstrap.Modal(videoModalEl);
 
     document.querySelectorAll('.play-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -68,23 +168,19 @@
         spinner.classList.remove('d-none');
 
         try {
-          const res  = await fetch(`/apps/video-player/start/${camId}`, { method: 'POST' });
-          const data = await res.json();
-          const hlsUrl = data.hls_url;
-
-          attachHls(hlsUrl);
+          const res = await fetch(`/apps/video-player/start/${camId}`, { method: 'POST' });
+          const { hls_url } = await res.json();
+          attachHls(hls_url);
           videoModalEl.dataset.camId = camId;
-          bsModal.show();
-        } catch (err) {
-          console.error(err);
-          alert('Unable to start stream');
+          bsVideoModal.show();
+        } catch {
+          showToast('Unable to start stream', 'danger');
         } finally {
           spinner.classList.add('d-none');
         }
       });
     });
 
-    // stop ffmpeg when modal hides
     videoModalEl.addEventListener('hidden.bs.modal', () => {
       const camId = videoModalEl.dataset.camId;
       modalVideo.pause();
@@ -93,14 +189,6 @@
       if (camId) fetch(`/apps/video-player/stop/${camId}`, { method: 'POST' });
     });
 
-    /* ------------------------------------------------- snapshot loader hide */
-    document.querySelectorAll('.snapshot-img').forEach(img => {
-      img.addEventListener('load', () => {
-        document.getElementById(`spinner-${img.dataset.camId}`).classList.add('d-none');
-      });
-    });
-
-    /* ------------------------------------------------- hls attach helper */
     function attachHls(src, retry = true) {
       if (window.Hls && Hls.isSupported()) {
         const hls = new Hls();
@@ -109,7 +197,6 @@
         hls.on(Hls.Events.MANIFEST_PARSED, () => modalVideo.play());
         hls.on(Hls.Events.ERROR, (_, data) => {
           if (retry && data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            console.warn('manifest not ready – retry once');
             setTimeout(() => attachHls(src, false), 1500);
           }
         });
@@ -117,8 +204,9 @@
         modalVideo.src = src;
         modalVideo.addEventListener('loadedmetadata', () => modalVideo.play(), { once: true });
       } else {
-        alert('HLS not supported in this browser');
+        showToast('HLS not supported', 'warning');
       }
     }
+
   });
 })();

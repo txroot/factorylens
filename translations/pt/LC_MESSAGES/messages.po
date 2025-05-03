@@ -166,3 +166,18 @@ msgstr "URL de Streaming"
 
 msgid "play_in_external"
 msgstr "Reproduzir Externamente"
+
+msgid "snapshot_title"
+msgstr "Instantâneo"
+
+msgid "snapshot"
+msgstr "Instantâneo"
+
+msgid "expand_full"
+msgstr "Expandir para ecrã completo"
+
+msgid "download_snapshot"
+msgstr "Descarregar instantâneo"
+
+msgid "download_pdf"
+msgstr "Descarregar PDF"

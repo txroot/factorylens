@@ -160,3 +160,18 @@ msgstr "Streaming URL"
 
 msgid "play_in_external"
 msgstr "Play Externally"
+
+msgid "snapshot_title"
+msgstr "Snapshot"
+
+msgid "snapshot"
+msgstr "Snapshot"
+
+msgid "expand_full"
+msgstr "Expand to Fullscreen"
+
+msgid "download_snapshot"
+msgstr "Download Snapshot"
+
+msgid "download_pdf"
+msgstr "Download PDF"

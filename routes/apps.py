@@ -1,8 +1,13 @@
 from flask import Blueprint, render_template, jsonify, current_app, Response
-from flask import url_for
+from flask import url_for, request, abort
 from models.camera import Camera
 import subprocess, os, time, shlex
 import shutil
+import io
+import cv2
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
 
 apps_bp = Blueprint('apps', __name__, url_prefix='/apps')
 
@@ -136,3 +141,89 @@ def video_snapshot(cam_id):
 
     return Response(img_data, mimetype='image/jpeg')
 
+@apps_bp.route('/video-player/snapshot/<int:cam_id>/pdf')
+def video_snapshot_pdf(cam_id):
+    cam = Camera.query.get_or_404(cam_id)
+
+    # reconstruct your RTSP URL exactly as you do in snapshot…
+    if cam.username and cam.password:
+        suffix = getattr(cam, 'stream_url_suffix', '') or ''
+        input_url = f"rtsp://{cam.username}:{cam.password}@{cam.address}:{cam.port}{suffix}"
+    else:
+        input_url = cam.stream_url
+
+    # grab one frame with ffmpeg
+    cmd = [
+        'ffmpeg',
+        '-rtsp_transport', 'tcp',
+        '-probesize', '32', '-analyzeduration', '0',
+        '-i', input_url,
+        '-frames:v', '1',
+        '-q:v', '2',
+        '-f', 'image2', 'pipe:1'
+    ]
+    try:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        img_data, _ = p.communicate(timeout=5)
+    except Exception as e:
+        current_app.logger.error("Snapshot→PDF failed for camera %d: %s", cam_id, e)
+        # fall back to placeholder JPEG
+        return current_app.send_static_file('img/video-player/placeholder.jpg')
+
+    # build a PDF with that JPEG
+    img_buf = io.BytesIO(img_data)
+    img = ImageReader(img_buf)
+    w, h = img.getSize()  # px
+    pdf_buf = io.BytesIO()
+    c = canvas.Canvas(pdf_buf, pagesize=(w, h))
+    c.drawImage(img, 0, 0, width=w, height=h)
+    c.showPage()
+    c.save()
+    pdf_buf.seek(0)
+
+    # generate timestamped filename
+    ts = time.strftime("%Y-%m-%d_%H-%M")
+    safe_name = cam.name.replace(" ", "_")
+    filename = f"snapshot_{safe_name}_{ts}.pdf"
+
+    return Response(
+      pdf_buf.read(),
+      mimetype='application/pdf',
+      headers={
+        'Content-Disposition': f'attachment; filename="{filename}"'
+      }
+    )
+
+@apps_bp.route('/video-player/snapshot/pdf', methods=['POST'])
+def convert_snapshot_to_pdf():
+    """
+    Accepts an uploaded JPEG (form‐file field "image") and returns a one‐page PDF.
+    """
+    if 'image' not in request.files:
+        abort(400, "Missing 'image' file")
+    img_file = request.files['image']
+    img_bytes = img_file.read()
+
+    # wrap in ImageReader
+    img_buf = io.BytesIO(img_bytes)
+    reader = ImageReader(img_buf)
+    w, h = reader.getSize()
+
+    # create PDF
+    pdf_buf = io.BytesIO()
+    c = canvas.Canvas(pdf_buf, pagesize=(w, h))
+    c.drawImage(reader, 0, 0, width=w, height=h)
+    c.showPage()
+    c.save()
+    pdf_buf.seek(0)
+
+    # timestamped filename
+    ts = time.strftime("%Y-%m-%d_%H-%M")
+    safe_name = img_file.filename.rsplit('.',1)[0]
+    filename = f"{safe_name}_{ts}.pdf"
+
+    return Response(
+        pdf_buf.read(),
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )

@@ -27,3 +27,6 @@ paho-mqtt
 
 # Translation
 Flask-Babel
+
+# Video Snapshots
+opencv-python-headless==4.9.0.80
