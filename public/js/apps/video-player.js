@@ -73,3 +73,13 @@
     }
   });
 })();
+
+videoModalEl.addEventListener('hidden.bs.modal', () => {
+  modalVideo.pause();
+  modalVideo.removeAttribute('src');
+  modalVideo.load();
+
+  // tell backend to kill ffmpeg
+  const camId = videoModalEl.querySelector('.play-btn').dataset.camId;
+  fetch(`/apps/video-player/stop/${camId}`, { method:'POST' });
+});

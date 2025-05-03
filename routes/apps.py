@@ -1,13 +1,25 @@
 from flask import Blueprint, render_template, jsonify, current_app
+from flask import url_for
 from models.camera import Camera
 import subprocess, os, time, shlex
 
 apps_bp = Blueprint('apps', __name__, url_prefix='/apps')
 
+ffmpeg_processes = {}
+
 @apps_bp.route('/video-player')
 def video_player():
     cameras = Camera.query.all()
     return render_template('apps/video-player.hbs', cameras=cameras)
+
+@apps_bp.route('/apps/video-player/check/<int:cam_id>')
+def check_playlist(cam_id):
+    cam = Camera.query.get_or_404(cam_id)
+    path = os.path.join(app.static_folder, 'streams', cam.serial_number, 'index.m3u8')
+    return {
+      "exists_on_disk": os.path.exists(path),
+      "full_disk_path": path
+    }
 
 @apps_bp.route('/video-player/start/<int:cam_id>', methods=['POST'])
 def start_stream(cam_id):
@@ -57,4 +69,18 @@ def start_stream(cam_id):
     else:
         current_app.logger.warning("Playlist still missing after 5s; see %s", err_log)
 
-    return jsonify({'hls_url': f"/static/streams/{cam.serial_number}/index.m3u8"})
+    return jsonify({
+    "hls_url": url_for(
+        'static',
+        filename=f"streams/{cam.serial_number}/index.m3u8"
+    )
+})
+    
+@apps_bp.route('/apps/video-player/stop/<int:cam_id>', methods=['POST'])
+def stop_stream(cam_id):
+    p = ffmpeg_processes.pop(cam_id, None)
+    if p:
+        p.terminate()
+        current_app.logger.info("Stopped ffmpeg for camera %d", cam_id)
+    return ('', 204)
+
