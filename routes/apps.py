@@ -114,8 +114,14 @@ def video_snapshot(cam_id):
     cmd = [
         'ffmpeg',
         '-rtsp_transport', 'tcp',
+        # ask ffmpeg to do almost no probing
+        '-probesize', '32',
+        '-analyzeduration', '0',
         '-i', input_url,
+        # grab exactly one frame
         '-frames:v', '1',
+        # set JPEG quality (optional)
+        '-q:v', '2',
         '-f', 'image2',
         'pipe:1'
     ]
