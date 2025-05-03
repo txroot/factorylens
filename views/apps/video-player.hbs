@@ -1,62 +1,109 @@
 {% extends "layouts/dash.hbs" %}
 
 {% block content %}
-<h2>{{ gettext("video_player_title") }}</h2>
-<p>{{ gettext("video_player_description") }}</p>
+  <h2 class="mt-4">{{ gettext("video_player_title") }}</h2>
+  <p class="mb-4">{{ gettext("video_player_description") }}</p>
 
-<div class="row">
-  {% for cam in cameras %}
-  <div class="col-md-4 mb-4">
-    <div class="card">
-      <div class="card-body text-center">
-        <h5 class="card-title">{{ cam.name }}</h5>
+  <div class="row">
+    {% for cam in cameras %}
+      <div class="col-md-4 mb-4 d-flex align-items-stretch">
+        <div class="card w-100">
 
-        <!-- Play in modal -->
-        <button type="button" class="btn btn-primary play-btn me-2" data-cam-id="{{ cam.id }}"
-          data-stream-url="{{ cam.stream_url }}" data-bs-toggle="modal" data-bs-target="#videoModal">
-          <i class="ti ti-player-play"></i>
-        </button>
+          <!-- Camera Title -->
+          <div class="card-header text-center">
+            <h5 class="mb-0">{{ cam.name }}</h5>
+          </div>
 
-        <!-- Check URL (alerts the raw stream_url) -->
-        <button type="button" class="btn btn-secondary check-btn me-2" data-stream-url="{{ cam.stream_url }}">
-          <i class="ti ti-link"></i>
-        </button>
+          <!-- Snapshot + Loader -->
+          <div class="p-3 d-flex justify-content-center">
+            <div class="ratio ratio-16x9 position-relative" style="max-width:300px; width:100%;">
+              <!-- Spinner overlay -->
+              <div
+                id="spinner-{{ cam.id }}"
+                class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-light"
+              >
+                <div class="spinner-border text-primary" role="status"></div>
+              </div>
+              <!-- Snapshot image -->
+              <img
+                src="{{ url_for('apps.video_snapshot', cam_id=cam.id) }}"
+                alt="{{ cam.name }} snapshot"
+                class="position-absolute top-0 start-0 w-100 h-100 snapshot-img"
+                data-cam-id="{{ cam.id }}"
+                style="object-fit:cover;"
+              >
+            </div>
+          </div>
 
-        <!-- Open raw URL externally -->
-        <a href="{{ cam.stream_url }}" target="_blank" class="btn btn-outline-secondary me-2">
-          <i class="ti ti-external-link"></i>
-        </a>
+          <!-- Action Buttons -->
+          <div class="card-body text-center">
+            <!-- Play in modal -->
+            <button
+              type="button"
+              class="btn btn-primary play-btn me-2"
+              data-cam-id="{{ cam.id }}"
+              data-stream-url="{{ cam.stream_url }}"
+              data-bs-toggle="modal"
+              data-bs-target="#videoModal"
+            >
+              <i class="ti ti-player-play"></i>
+            </button>
 
-        <!-- small spinner shown while JS waits -->
-        <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status"></div>
+            <!-- Check URL -->
+            <button
+              type="button"
+              class="btn btn-secondary check-btn me-2"
+              data-stream-url="{{ cam.stream_url }}"
+            >
+              <i class="ti ti-link"></i>
+            </button>
+
+            <!-- External open -->
+            <a
+              href="{{ cam.stream_url }}"
+              target="_blank"
+              class="btn btn-outline-secondary me-2"
+            >
+              <i class="ti ti-external-link"></i>
+            </a>
+
+            <!-- small spinner while starting -->
+            <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status"></div>
+          </div>
+
+        </div>
       </div>
+    {% endfor %}
+  </div>
 
+  <!-- Video Playback Modal -->
+  <div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ gettext("video_player_title") }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-0">
+          <video
+            id="modal-video"
+            class="w-100"
+            controls
+            muted
+            playsinline
+            style="background:#000;"
+          ></video>
+        </div>
+      </div>
     </div>
   </div>
-  {% endfor %}
-</div>
-
-<!-- Modal -->
-<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">{{ gettext("video_player_title") }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-0">
-        <video id="modal-video" class="w-100" controls muted playsinline style="background:#000;"></video>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Bootstrap Bundle (includes Popper) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<!-- hls.js for HLS playback -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<!-- Custom video player logic -->
-<script src="{{ url_for('static', filename='js/apps/video-player.js') }}"></script>
+  <!-- 1) Bootstrap Bundle (w/ Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- 2) hls.js for HLS playback -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- 3) Custom video-player logic -->
+  <script src="{{ url_for('static', filename='js/apps/video-player.js') }}"></script>
 {% endblock %}

@@ -68,5 +68,15 @@
         alert('HLS not supported in this browser');
       }
     }
+
+    // hide snapshot loader when each image loads
+    document.querySelectorAll('img.snapshot-img').forEach(img => {
+      const camId = img.dataset.camId;
+      const spinner = document.getElementById(`spinner-${camId}`);
+      img.addEventListener('load', () => {
+        spinner.classList.add('d-none');
+      });
+    });
+
   });
 })();

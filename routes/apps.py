@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, current_app
+from flask import Blueprint, render_template, jsonify, current_app, Response
 from flask import url_for
 from models.camera import Camera
 import subprocess, os, time, shlex
@@ -98,3 +98,35 @@ def stop_stream(cam_id):
             current_app.logger.error("Error removing %s: %s", out_dir, e)
 
     return ('', 204)
+
+@apps_bp.route('/video-player/snapshot/<int:cam_id>')
+def video_snapshot(cam_id):
+    cam = Camera.query.get_or_404(cam_id)
+
+    # Reconstruct RTSP URL with credentials
+    if cam.username and cam.password:
+        suffix = getattr(cam, 'stream_url_suffix', '') or ''
+        input_url = f"rtsp://{cam.username}:{cam.password}@{cam.address}:{cam.port}{suffix}"
+    else:
+        input_url = cam.stream_url
+
+    # Build ffmpeg command to grab one frame
+    cmd = [
+        'ffmpeg',
+        '-rtsp_transport', 'tcp',
+        '-i', input_url,
+        '-frames:v', '1',
+        '-f', 'image2',
+        'pipe:1'
+    ]
+    # Run and capture stdout
+    try:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        img_data, _ = p.communicate(timeout=5)
+    except Exception as e:
+        current_app.logger.error("Snapshot failed for camera %d: %s", cam_id, e)
+        # fall back to a 1×1 transparent GIF or your placeholder
+        return current_app.send_static_file('img/video-player/placeholder.jpg')
+
+    return Response(img_data, mimetype='image/jpeg')
+
