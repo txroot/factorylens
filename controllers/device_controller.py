@@ -1,12 +1,17 @@
+# controllers/device_controller.py
+
 from flask import jsonify, request, abort
 from extensions import db
+from datetime import datetime
+
 from models.device import Device
 from models.device_model import DeviceModel
 from models.device_category import DeviceCategory
 from models.device_schema import DeviceSchema
+from models.camera import Camera
+from models.camera_stream import CameraStream
 
-
-# ── DEVICE TABLE DATA ─────────────────────────────────────────────
+# ── LIST DEVICES FOR TABLE ───────────────────────────────────────────
 def list_devices():
     rows = [
         {
@@ -22,7 +27,7 @@ def list_devices():
     return jsonify(rows)
 
 
-# ── SINGLE DEVICE (GET) ───────────────────────────────────────────
+# ── GET A SINGLE DEVICE (for edit form) ─────────────────────────────
 def get_device(dev_id):
     dev = Device.query.get_or_404(dev_id)
     return jsonify({
@@ -44,13 +49,14 @@ def get_device(dev_id):
     })
 
 
-# ── CREATE DEVICE ─────────────────────────────────────────────────
+# ── CREATE A NEW DEVICE ─────────────────────────────────────────────
 def create_device():
     data = request.json or {}
     required = ("name", "mqtt_client_id", "topic_prefix", "device_model_id")
     if not all(data.get(k) for k in required):
         abort(400, "Missing required fields")
 
+    # 1) Create Device
     dev = Device(
         name=data["name"],
         serial_number=data.get("serial_number"),
@@ -67,32 +73,170 @@ def create_device():
         qr_code=data.get("qr_code"),
     )
     db.session.add(dev)
+    db.session.flush()  # so dev.id is set
+
+    # 2) If this is a camera model → create Camera + one Stream
+    model = DeviceModel.query.get(dev.device_model_id)
+    if model and model.category.name.lower() == "camera":
+        params = data.get("parameters", {})
+
+        # 2a) Camera record
+        cam = Camera(
+            device_id=dev.id,
+            name=dev.name,
+            serial_number=dev.serial_number,
+            address=params.get("address", ""),
+            port=params.get("port", 554),
+            username=params.get("username"),
+            password=params.get("password"),
+            manufacturer=params.get("manufacturer"),
+            model=params.get("model") or model.name,
+            firmware=params.get("firmware"),
+            description=params.get("description"),
+            notes=params.get("notes"),
+            snapshot_url=params.get("snapshot_url"),
+            snapshot_interval_seconds=params.get("snapshot_interval_seconds", 0),
+            motion_detection_enabled=params.get("motion_detection_enabled", False),
+            location=dev.location,
+            status="offline",
+        )
+        db.session.add(cam)
+        db.session.flush()  # so cam.id is set
+
+        # 2b) Build a single CameraStream
+        raw_type = params.get("stream_type", "")
+        # UI uses "primary" → DB expects "main"
+        stype = "main" if raw_type == "primary" else raw_type
+
+        # resolution string
+        res = (params.get("resolution") or "1920x1080").split("x")
+        try:
+            w, h = int(res[0]), int(res[1])
+        except:
+            w = h = None
+
+        stream = CameraStream(
+            camera_id=cam.id,
+            stream_type=stype,
+            url_prefix=params.get("stream_url_suffix", ""),
+            stream_suffix=None,
+            full_url=None,
+            resolution_w=w,
+            resolution_h=h,
+            fps=params.get("fps"),
+            codec=None,
+            bitrate_kbps=None,
+            bitrate_type=None,
+            is_active=True,
+            description="Configured via UI",
+        )
+        db.session.add(stream)
+        db.session.flush()
+
+        # 2c) Make it the default
+        cam.default_stream_id = stream.id
+
     db.session.commit()
     return jsonify(ok=True, id=dev.id)
 
 
-# ── UPDATE DEVICE ────────────────────────────────────────────────
+# ── UPDATE AN EXISTING DEVICE ──────────────────────────────────────
 def update_device(dev_id):
     dev = Device.query.get_or_404(dev_id)
     data = request.json or {}
 
-    fields = (
-        "name", "serial_number", "device_model_id", "mqtt_client_id", "topic_prefix",
-        "location", "poll_interval", "poll_interval_unit", "description",
-        "image", "qr_code", "enabled"
-    )
-    for f in fields:
+    # 1) Update the generic Device fields
+    for f in (
+        "name",
+        "serial_number",
+        "device_model_id",
+        "mqtt_client_id",
+        "topic_prefix",
+        "location",
+        "poll_interval",
+        "poll_interval_unit",
+        "description",
+        "image",
+        "qr_code",
+        "enabled",
+    ):
         if f in data:
             setattr(dev, f, data[f])
 
     if "parameters" in data:
         dev.parameters = data["parameters"]
 
+    # 2) If camera model → sync Camera + its single Stream
+    model = DeviceModel.query.get(dev.device_model_id)
+    if model and model.category.name.lower() == "camera":
+        params = data.get("parameters", {})
+
+        # fetch or create Camera record
+        cam = Camera.query.filter_by(device_id=dev.id).first()
+        if not cam:
+            cam = Camera(device_id=dev.id)
+            db.session.add(cam)
+
+        # update camera fields
+        cam.name = dev.name
+        cam.serial_number = dev.serial_number
+        cam.address = params.get("address", cam.address)
+        cam.port = params.get("port", cam.port)
+        cam.username = params.get("username", cam.username)
+        cam.password = params.get("password", cam.password)
+        cam.description = params.get("description", cam.description)
+        cam.notes = params.get("notes", cam.notes)
+        cam.snapshot_url = params.get("snapshot_url", cam.snapshot_url)
+        cam.snapshot_interval_seconds = params.get(
+            "snapshot_interval_seconds", cam.snapshot_interval_seconds
+        )
+        cam.motion_detection_enabled = params.get(
+            "motion_detection_enabled", cam.motion_detection_enabled
+        )
+
+        # ——— remove old streams safely ———
+        # clear default_stream_id to avoid FK error
+        cam.default_stream_id = None
+        db.session.flush()
+        # delete all old streams
+        CameraStream.query.filter_by(camera_id=cam.id).delete()
+        db.session.flush()
+
+        # ——— recreate a single stream from form ———
+        raw_type = params.get("stream_type", "")
+        stype = "main" if raw_type == "primary" else raw_type
+        res = (params.get("resolution") or "1920x1080").split("x")
+        try:
+            w, h = int(res[0]), int(res[1])
+        except:
+            w = h = None
+
+        stream = CameraStream(
+            camera_id=cam.id,
+            stream_type=stype,
+            url_prefix=params.get("stream_url_suffix", ""),
+            stream_suffix=None,
+            full_url=None,
+            resolution_w=w,
+            resolution_h=h,
+            fps=params.get("fps"),
+            codec=None,
+            bitrate_kbps=None,
+            bitrate_type=None,
+            is_active=True,
+            description="Configured via UI",
+        )
+        db.session.add(stream)
+        db.session.flush()
+
+        # mark it default
+        cam.default_stream_id = stream.id
+
     db.session.commit()
     return jsonify(ok=True)
 
 
-# ── DELETE DEVICE ────────────────────────────────────────────────
+# ── DELETE DEVICE (cascades to Camera + Streams if your FKs are set ON DELETE CASCADE) ───
 def delete_device(dev_id):
     dev = Device.query.get_or_404(dev_id)
     db.session.delete(dev)
@@ -100,7 +244,7 @@ def delete_device(dev_id):
     return jsonify(ok=True)
 
 
-# ── GET DEVICE SCHEMA BY MODEL ───────────────────────────────────
+# ── JSON‐SCHEMA FOR THE CONFIG TAB ─────────────────────────────────
 def get_device_schema(model_id):
     model = DeviceModel.query.get_or_404(model_id)
     if model.schema:
@@ -108,13 +252,11 @@ def get_device_schema(model_id):
     return jsonify({})
 
 
-# ── LIST CATEGORIES FOR <select> ─────────────────────────────────
+# ── HELPERS FOR SELECTS ─────────────────────────────────────────────
 def list_categories():
     rows = DeviceCategory.query.order_by(DeviceCategory.name).all()
     return jsonify([{"id": c.id, "name": c.name} for c in rows])
 
-
-# ── LIST MODELS FOR <select> (optionally filtered) ───────────────
 def list_models():
     cat_id = request.args.get("cat", type=int)
     query = DeviceModel.query
