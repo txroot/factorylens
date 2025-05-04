@@ -1,3 +1,5 @@
+## requirements.txt
+
 # General
 Flask==2.2.5
 Werkzeug==2.2.2
@@ -30,3 +32,6 @@ Flask-Babel
 
 # Video Snapshots
 opencv-python-headless==4.9.0.80
+
+# Tasks
+apscheduler==3.10.3

@@ -42,6 +42,10 @@ from utils.mail_client import mail
 # Import Configurations
 from config.settings import Config
 
+# Import Tasks
+from apscheduler.schedulers.background import BackgroundScheduler
+from utils.tasks import poll_camera_status
+
 # Internationalization
 from flask_babel import Babel
 babel = Babel()
@@ -97,6 +101,18 @@ def create_app():
     app.register_blueprint(notifications_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(apps_bp)
+
+    # ——— START POLLING SCHEDULER ———
+    scheduler = BackgroundScheduler()
+    # run our poll job every 30 seconds (you can tune this to your smallest unit)
+    scheduler.add_job(
+        func=poll_camera_status,
+        trigger='interval',
+        seconds=30,
+        id='poll_camera_status',
+        replace_existing=True
+    )
+    scheduler.start()
 
     return app
 
