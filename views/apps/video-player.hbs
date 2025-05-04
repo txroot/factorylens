@@ -4,9 +4,8 @@
 <h2 class="mt-4">{{ gettext("video_player_title") }}</h2>
 <p class="mb-4">{{ gettext("video_player_description") }}</p>
 
-<div class="row">
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
   {% for cam in cameras %}
-    {# figure out default stream: either explicit or first in list #}
     {% if cam.default_stream %}
       {% set def_stream = cam.default_stream %}
     {% elif cam.streams|length > 0 %}
@@ -15,15 +14,13 @@
       {% set def_stream = None %}
     {% endif %}
 
-    <div class="col-md-4 mb-4 d-flex align-items-stretch">
-      <div class="card w-100">
+    <div class="col d-flex align-items-stretch">
+      <div class="card h-100 w-100 min-w-18rem">
 
-        <!-- Title -->
         <div class="card-header text-center">
           <h5 class="mb-0">{{ cam.name }}</h5>
         </div>
 
-        <!-- Snapshot + loader -->
         <div class="p-3 d-flex justify-content-center">
           <div class="ratio ratio-16x9 position-relative" style="max-width:300px;width:100%;">
             <div id="spinner-{{ cam.id }}"
@@ -39,10 +36,7 @@
           </div>
         </div>
 
-        <!-- Action buttons -->
         <div class="card-body text-center">
-
-          {# Play dropdown + default stream on main button #}
           <div class="btn-group me-2">
             <button type="button"
                     class="btn btn-primary play-btn"
@@ -78,7 +72,6 @@
             </ul>
           </div>
 
-          {# Snapshot dropdown #}
           <div class="btn-group me-2">
             <button type="button"
                     class="btn btn-info snapshot-btn"
@@ -120,7 +113,6 @@
             </ul>
           </div>
 
-          {# URL collapse & external link #}
           {% if def_stream %}
             {% set play_url = def_stream.full_url or def_stream.get_full_url() %}
           {% else %}
@@ -168,9 +160,9 @@
               </div>
             </div>
           </div>
-
         </div>
       </div>
+    </div>
   {% endfor %}
 </div>
 
