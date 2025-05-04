@@ -9,6 +9,9 @@ class DeviceModel(db.Model):
     __tablename__ = "device_models"
     id          = db.Column(db.Integer, primary_key=True)
     name        = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text, comment="Optional description of the device model")
+    serial_number = db.Column(db.String(100), unique=True, comment="Serial number or hardware ID")
+    firmware    = db.Column(db.String(50), comment="Firmware version")
     manufacturer = db.Column(db.String(100))
     notes       = db.Column(db.Text)
 
