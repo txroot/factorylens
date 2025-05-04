@@ -257,11 +257,17 @@ msgstr "Dispositivo eliminado"
 msgid "settings_device_delete"
 msgstr "Eliminar"
 
-msgid "settings_device_cancel"
-msgstr "Cancelar"
-
 msgid "settings_device_parameters"
 msgstr "Parâmetros"
 
 msgid "settings_device_parameters_help"
 msgstr "Insira um JSON válido com as configurações avançadas."
+
+msgid "settings_device_parameters_invalid"
+msgstr "Parâmetros inválidos. Verifique o JSON."
+
+msgid "settings_device_config"
+msgstr "Configuração"
+
+msgid "settings_device_enabled"
+msgstr "Ativado"

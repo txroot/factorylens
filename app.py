@@ -15,8 +15,15 @@ load_dotenv()
 # Import Models
 from models import User, Camera, Device
 from models.user import User
+from models.device_category import DeviceCategory
+from models.device_model import DeviceModel
+from models.device_schema import DeviceSchema
 from models.device import Device
 from models.camera import Camera
+from models.camera_stream import CameraStream
+
+# Import Controllers
+import controllers.device_controller
 
 # Import Blueprints
 from middleware.auth import auth_bp

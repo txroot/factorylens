@@ -8,17 +8,29 @@
         <h4 class="card-title mb-0">{{ t("settings_device_title") }}</h4>
       </div>
       <div class="card-body">
-        <table id="devicesTable" class="table table-striped" data-toggle="table" data-url="/settings/devices/data"
-          data-search="true" data-show-refresh="true" data-mobile-responsive="true" data-pagination="true">
+        <table id="devicesTable"
+               class="table table-striped"
+               data-toggle="table"
+               data-url="/settings/devices/data"
+               data-search="true"
+               data-show-refresh="true"
+               data-mobile-responsive="true"
+               data-pagination="true"
+               data-show-loading="false"
+               data-loading-template=""
+               >
           <thead>
             <tr>
               <th data-field="name">{{ t("settings_device_name") }}</th>
-              <th data-field="type">{{ t("settings_device_type") }}</th>
+              <th data-field="model">{{ t("settings_device_model") }}</th>
               <th data-field="category">{{ t("settings_device_category") }}</th>
               <th data-field="status">{{ t("settings_device_status") }}</th>
               <th data-field="last_seen">{{ t("settings_device_last_seen") }}</th>
-              <th data-field="id" data-formatter="actionFmt" data-align="center" data-width="160"
-                data-classes="text-nowrap">
+              <th data-field="id"
+                  data-formatter="actionFmt"
+                  data-align="center"
+                  data-width="160"
+                  data-classes="text-nowrap">
                 {{ t("settings_device_actions") }}
               </th>
             </tr>
@@ -29,70 +41,61 @@
   </div>
 </div>
 
-<!-- Floating add button -->
-<button id="addDeviceBtn" class="btn btn-primary rounded-circle shadow-lg position-fixed end-0 me-5"
-  style="bottom: 120px; width: 64px; height: 64px; z-index: 1055;" title="{{ t('settings_device_add') }}">
+<!-- Floating ADD button -->
+<button id="addDeviceBtn"
+        class="btn btn-primary rounded-circle shadow-lg position-fixed end-0 me-5"
+        style="bottom: 120px; width:64px; height:64px; z-index:1055;"
+        title="{{ t('settings_device_add') }}">
   <i class="ti ti-plus fs-4 text-white"></i>
 </button>
 
-<!-- ──────── Add / Edit Modal ──────── -->
+<!-- Add / Edit Modal -->
 <div class="modal fade" id="deviceModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <form id="deviceForm" class="modal-content">
 
-      <input type="hidden" name="id"> <!-- filled on edit -->
+      <input type="hidden" name="id">
 
       <div class="modal-header">
         <h5 class="modal-title">{{ t("settings_device_new") }}</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
       <div class="modal-body">
-        <!-- tabs -->
+        <!-- Tabs -->
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item">
-            <button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#basicTab" role="tab">
+            <button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#basicTab">
               {{ t("settings_device_basic") }}
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#advTab" role="tab">
+            <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#advTab">
               {{ t("settings_device_advanced") }}
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#paramTab" role="tab">
-              {{ t("settings_device_parameters") }}
+            <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#configTab">
+              {{ t("settings_device_config") }}
             </button>
           </li>
         </ul>
 
         <div class="tab-content">
           <!-- BASIC -->
-          <div class="tab-pane fade show active" id="basicTab" role="tabpanel">
+          <div class="tab-pane fade show active" id="basicTab">
             <div class="form-floating mb-3">
               <input class="form-control" name="name" required>
               <label>{{ t("settings_device_name") }} *</label>
             </div>
-            <div class="row g-2">
-              <div class="col-6 form-floating mb-3">
-                <select class="form-select" name="device_type">
-                  <option value="generic">generic</option>
-                  <option value="shelly1">shelly1</option>
-                  <option value="shelly2">shelly2</option>
-                  <option value="camera">camera</option>
-                </select>
-                <label>{{ t("settings_device_type") }}</label>
-              </div>
-              <div class="col-6 form-floating mb-3">
-                <select class="form-select" name="category">
-                  <option value="iot">IoT</option>
-                  <option value="camera">camera</option>
-                  <option value="logger">logger</option>
-                  <option value="messenger">messenger</option>
-                  <option value="processor">processor</option>
-                </select>
+            <div class="row g-2 mb-3">
+              <div class="col-6 form-floating">
+                <select class="form-select" id="categorySelect" name="category_id" required></select>
                 <label>{{ t("settings_device_category") }}</label>
+              </div>
+              <div class="col-6 form-floating">
+                <select class="form-select" id="modelSelect" name="device_model_id" required></select>
+                <label>{{ t("settings_device_model") }}</label>
               </div>
             </div>
             <div class="form-floating mb-3">
@@ -103,10 +106,14 @@
               <input class="form-control" name="topic_prefix" required>
               <label>{{ t("settings_device_topic_prefix") }} *</label>
             </div>
+            <div class="form-check form-switch mt-3">
+              <input class="form-check-input" type="checkbox" name="enabled" id="enabledSwitch">
+              <label class="form-check-label" for="enabledSwitch">{{ t("settings_device_enabled") }}</label>
+            </div>
           </div>
 
           <!-- ADVANCED -->
-          <div class="tab-pane fade" id="advTab" role="tabpanel">
+          <div class="tab-pane fade" id="advTab">
             <div class="form-floating mb-3">
               <input class="form-control" name="serial_number">
               <label>{{ t("settings_device_serial_number") }}</label>
@@ -133,41 +140,42 @@
               <textarea class="form-control" name="description" style="height:80px"></textarea>
               <label>{{ t("settings_device_description") }}</label>
             </div>
-          </div>
-          
-          <!-- PARAMETERS -->
-          <div class="tab-pane fade" id="paramTab" role="tabpanel">
             <div class="form-floating mb-3">
-              <textarea class="form-control" name="parameters" style="height:200px; font-family:monospace;"
-                        placeholder='{"foo": "bar"}'></textarea>
-              <label>{{ t("settings_device_parameters") }}</label>
+              <input class="form-control" type="url" name="image">
+              <label>{{ t("settings_device_image_url") }}</label>
             </div>
-            <small class="text-muted">{{ t("settings_device_parameters_help") }}</small>
+            <div class="form-floating mb-3">
+              <input class="form-control" name="qr_code">
+              <label>{{ t("settings_device_qr_code") }}</label>
+            </div>
+          </div>
+
+          <!-- CONFIG (JSON-Schema) -->
+          <div class="tab-pane fade" id="configTab">
+            <div id="dynamicConfigEditor"></div>
           </div>
         </div>
-      </div><!-- modal‑body -->
+      </div>
 
       <div class="modal-footer">
         <button type="button" class="btn btn-sm btn-dark" data-bs-dismiss="modal">
           {{ t("settings_device_cancel") }}
         </button>
-        <button class="btn btn-sm btn-primary" type="submit">{{ t("settings_device_save") }}</button>
+        <button type="submit" class="btn btn-sm btn-primary">
+          {{ t("settings_device_save") }}
+        </button>
       </div>
     </form>
   </div>
 </div>
 
 <!-- Confirm Delete Modal -->
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-
-      <!-- Body: centered text -->
       <div class="modal-body text-center">
         <p class="mb-4">{{ t("settings_device_delete_confirm") }}</p>
       </div>
-
-      <!-- Footer: buttons centered -->
       <div class="modal-footer justify-content-center border-0">
         <button type="button" class="btn btn-sm btn-dark me-2" data-bs-dismiss="modal">
           {{ t("settings_device_cancel") }}
@@ -176,22 +184,30 @@
           {{ t("settings_device_delete") }}
         </button>
       </div>
-
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
-<!-- Translation map for JS -->
+<script src="https://cdn.jsdelivr.net/npm/@json-editor/json-editor@latest/dist/jsoneditor.min.js"></script>
 <script>
   window.translations = {
     settings_device_new: {{ t("settings_device_new") | tojson }},
-  settings_device_edit: {{ t("settings_device_edit") | tojson }},
-  settings_device_delete_confirm: {{ t("settings_device_delete_confirm") | tojson }},
-  settings_device_deleted: {{ t("settings_device_deleted") | tojson }},
-  settings_device_saved: {{ t("settings_device_saved") | tojson }}
+    settings_device_edit: {{ t("settings_device_edit") | tojson }},
+    settings_device_add: {{ t("settings_device_add") | tojson }},
+    settings_device_cancel: {{ t("settings_device_cancel") | tojson }},
+    settings_device_save: {{ t("settings_device_save") | tojson }},
+    settings_device_enabled: {{ t("settings_device_enabled") | tojson }},
+    settings_device_image_url: {{ t("settings_device_image_url") | tojson }},
+    settings_device_qr_code: {{ t("settings_device_qr_code") | tojson }},
+    settings_device_config: {{ t("settings_device_config") | tojson }},
+    settings_device_delete_confirm: {{ t("settings_device_delete_confirm") | tojson }},
+    settings_device_deleted: {{ t("settings_device_deleted") | tojson }},
+    settings_device_saved: {{ t("settings_device_saved") | tojson }},
+    settings_device_parameters_invalid: {{ t("settings_device_parameters_invalid") | tojson }},
+    settings_device_model: {{ t("settings_device_model") | tojson }},
+    settings_device_category: {{ t("settings_device_category") | tojson }}
   };
   window.t = key => window.translations[key] || key;
 </script>

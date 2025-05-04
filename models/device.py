@@ -13,7 +13,12 @@ class Device(db.Model):
     # (Optional) Serial number or hardware ID
     serial_number = db.Column(db.String(100), unique=True)
 
-    # Device type and category
+    # Device FK -> concrete model
+    device_model_id = db.Column(db.Integer,
+                                db.ForeignKey("device_models.id"),
+                                nullable=False)
+    model           = db.relationship("DeviceModel", back_populates="devices")
+    '''
     device_type = db.Column(
         db.Enum('shelly1', 'shelly2', 'generic', name='device_type'),
         nullable=False,
@@ -23,7 +28,10 @@ class Device(db.Model):
         db.Enum('camera', 'logger', 'messenger', 'processor', 'module', 'iot', 'storage', name='device_category'),
         nullable=False,
         default='iot'
-    )
+    )    
+    
+    '''
+
 
     # Polling settings
     poll_interval = db.Column(db.Integer, default=60, comment="Polling frequency value")
