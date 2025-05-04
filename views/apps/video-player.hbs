@@ -8,76 +8,146 @@
   {% for cam in cameras %}
   <div class="col-md-4 mb-4 d-flex align-items-stretch">
     <div class="card w-100">
+
       <!-- Title -->
       <div class="card-header text-center">
         <h5 class="mb-0">{{ cam.name }}</h5>
       </div>
 
-      <!-- Snapshot + loader (16×9 box, max-300px) -->
+      <!-- Snapshot + loader -->
       <div class="p-3 d-flex justify-content-center">
         <div class="ratio ratio-16x9 position-relative" style="max-width:300px;width:100%;">
-          <div id="spinner-{{ cam.id }}" class="position-absolute top-0 start-0 w-100 h-100 d-flex
-                          justify-content-center align-items-center bg-light">
+          <div id="spinner-{{ cam.id }}"
+               class="position-absolute top-0 start-0 w-100 h-100
+                      d-flex justify-content-center align-items-center bg-light">
             <div class="spinner-border text-primary"></div>
           </div>
-
-          <img src="{{ url_for('apps.video_snapshot', cam_id=cam.id) }}" alt="{{ cam.name }} snapshot"
-            class="position-absolute top-0 start-0 w-100 h-100 snapshot-img" data-cam-id="{{ cam.id }}"
-            style="object-fit:cover;">
+          <img src="{{ url_for('apps.video_snapshot', cam_id=cam.id) }}"
+               alt="{{ cam.name }} snapshot"
+               class="position-absolute top-0 start-0 w-100 h-100 snapshot-img"
+               data-cam-id="{{ cam.id }}"
+               style="object-fit:cover;">
         </div>
       </div>
 
       <!-- Action buttons -->
       <div class="card-body text-center">
-        <!-- play -->
-        <button class="btn btn-primary play-btn me-2" data-cam-id="{{ cam.id }}" data-stream-url="{{ cam.stream_url }}"
-          data-bs-toggle="modal" data-bs-target="#videoModal">
-          <i class="ti ti-player-play"></i>
-        </button>
 
-        <!-- snapshot refresh -->
-        <button class="btn btn-info snapshot-btn me-2" data-cam-id="{{ cam.id }}"
-          data-cam-name="{{ cam.name|replace(' ', '_') }}">
-          <i class="ti ti-camera"></i>
-        </button>
+        {# Play dropdown #}
+        <div class="btn-group me-2">
+          <button type="button"
+                  class="btn btn-primary play-btn"
+                  data-cam-id="{{ cam.id }}"
+                  data-bs-toggle="modal"
+                  data-bs-target="#videoModal">
+            <i class="ti ti-player-play"></i>
+          </button>
+          <button type="button"
+                  class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  title="Choose stream">
+            <span class="visually-hidden">Toggle streams</span>
+          </button>
+          <ul class="dropdown-menu">
+            {% for stream in cam.streams %}
+            <li>
+              <a class="dropdown-item play-stream-item"
+                 href="#"
+                 data-cam-id="{{ cam.id }}"
+                 data-stream-id="{{ stream.id }}">
+                {{ stream.stream_type }} ({{ stream.resolution_w }}×{{ stream.resolution_h }})
+              </a>
+            </li>
+            {% endfor %}
+            {% if cam.streams|length == 0 %}
+            <li><span class="dropdown-item text-muted">No streams configured</span></li>
+            {% endif %}
+          </ul>
+        </div>
 
-        <!-- collapse toggle for URL -->
-        <button class="btn btn-secondary me-2" type="button" data-bs-toggle="collapse"
-          data-bs-target="#urlCollapse-{{ cam.id }}" aria-expanded="false" aria-controls="urlCollapse-{{ cam.id }}"
-          title="Stream URL">
+        {# Snapshot dropdown #}
+        <div class="btn-group me-2">
+          <button type="button"
+                  class="btn btn-info snapshot-btn"
+                  data-cam-id="{{ cam.id }}"
+                  data-cam-name="{{ cam.name|replace(' ', '_') }}">
+            <i class="ti ti-camera"></i>
+          </button>
+          <button type="button"
+                  class="btn btn-info dropdown-toggle dropdown-toggle-split"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  title="Snapshot options">
+            <span class="visually-hidden">Toggle snapshot options</span>
+          </button>
+          <ul class="dropdown-menu">
+            {% if cam.snapshot_url %}
+            <li>
+              <a class="dropdown-item snapshot-url-item"
+                 href="#"
+                 data-cam-id="{{ cam.id }}">
+                Direct URL
+              </a>
+            </li>
+            {% endif %}
+            {% for stream in cam.streams %}
+            <li>
+              <a class="dropdown-item snapshot-stream-item"
+                 href="#"
+                 data-cam-id="{{ cam.id }}"
+                 data-stream-id="{{ stream.id }}">
+                {{ stream.stream_type }}
+              </a>
+            </li>
+            {% endfor %}
+            {% if not cam.snapshot_url and cam.streams|length == 0 %}
+            <li><span class="dropdown-item text-muted">No snapshot options</span></li>
+            {% endif %}
+          </ul>
+        </div>
+
+        {# URL collapse & external link #}
+        <button class="btn btn-secondary me-2"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#urlCollapse-{{ cam.id }}"
+                aria-expanded="false"
+                aria-controls="urlCollapse-{{ cam.id }}"
+                title="Stream URL">
           <i class="ti ti-link"></i>
         </button>
 
-        <!-- external -->
         <a href="{{ cam.stream_url }}" target="_blank" class="btn btn-outline-secondary me-2">
           <i class="ti ti-external-link"></i>
         </a>
 
-        <!-- tiny spinner while ffmpeg starts -->
         <div class="spinner-border spinner-border-sm text-primary ms-2 d-none"></div>
 
-        <!-- Collapsible URL panel with Copy  Hide buttons -->
         <div class="collapse mt-3" id="urlCollapse-{{ cam.id }}">
           <div class="border rounded bg-light p-2">
             <div class="input-group">
-              <!-- Multi-line textarea so long URLs wrap and are selectable -->
-              <textarea class="form-control" rows="2" readonly
-                style="resize: none; overflow: auto; white-space: pre-wrap;">{{ cam.stream_url }}</textarea>
-
-              <!-- Copy button -->
-              <button class="btn btn-outline-secondary copy-btn" type="button" data-url="{{ cam.stream_url }}"
-                aria-label="Copy URL">
+              <textarea class="form-control"
+                        rows="2"
+                        readonly
+                        style="resize:none; overflow:auto; white-space:pre-wrap;">
+{{ cam.stream_url }}</textarea>
+              <button class="btn btn-outline-secondary copy-btn"
+                      type="button"
+                      data-url="{{ cam.stream_url }}"
+                      aria-label="Copy URL">
                 <i class="ti ti-copy"></i>
               </button>
-
-              <!-- Hide button -->
-              <button class="btn btn-outline-danger hide-url-btn" type="button"
-                data-target="urlCollapse-{{ cam.id }}" aria-label="Hide URL">
+              <button class="btn btn-outline-danger hide-url-btn"
+                      type="button"
+                      data-target="urlCollapse-{{ cam.id }}"
+                      aria-label="Hide URL">
                 <i class="ti ti-x"></i>
               </button>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -93,7 +163,12 @@
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-0">
-        <video id="modal-video" class="w-100" muted controls playsinline style="background:#000;"></video>
+        <video id="modal-video"
+               class="w-100"
+               muted
+               controls
+               playsinline
+               style="background:#000;"></video>
       </div>
     </div>
   </div>
@@ -103,31 +178,43 @@
 <div class="modal fade" id="snapshotModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <!-- header with dynamic title + download/pdf/full buttons -->
       <div class="modal-header d-flex justify-content-between align-items-center">
         <h5 class="modal-title" id="snapshotModalTitle">Snapshot</h5>
         <div class="btn-group btn-group-sm">
-          <button type="button" class="btn btn-light" id="snapshot-full-btn" title="{{ gettext('expand_full') }}">
+          <button type="button"
+                  class="btn btn-light"
+                  id="snapshot-full-btn"
+                  title="{{ gettext('expand_full') }}">
             <i class="ti ti-maximize"></i>
           </button>
-          <a href="#" class="btn btn-light" id="snapshot-download-btn" download
-            title="{{ gettext('download_snapshot') }}">
+          <a href="#"
+             class="btn btn-light"
+             id="snapshot-download-btn"
+             download
+             title="{{ gettext('download_snapshot') }}">
             <i class="ti ti-download"></i>
           </a>
-          <a href="#" class="btn btn-light" id="snapshot-pdf-btn" download title="{{ gettext('download_pdf') }}">
+          <a href="#"
+             class="btn btn-light"
+             id="snapshot-pdf-btn"
+             download
+             title="{{ gettext('download_pdf') }}">
             <i class="ti ti-file-text"></i>
           </a>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
       </div>
-      <!-- body with loader + image -->
       <div class="modal-body position-relative text-center bg-light" style="min-height:300px;">
-        <div id="snapshot-spinner" class="position-absolute top-0 start-0 w-100 h-100 d-flex
-                   justify-content-center align-items-center">
+        <div id="snapshot-spinner"
+             class="position-absolute top-0 start-0 w-100 h-100
+                    d-flex justify-content-center align-items-center">
           <div class="spinner-border text-primary" role="status"></div>
         </div>
-        <img id="snapshot-img" src="" alt="{{ gettext('snapshot') }}" class="img-fluid d-none"
-          style="max-width:100%; max-height:100%;">
+        <img id="snapshot-img"
+             src=""
+             alt="{{ gettext('snapshot') }}"
+             class="img-fluid d-none"
+             style="max-width:100%; max-height:100%;">
       </div>
     </div>
   </div>
@@ -135,8 +222,6 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- hls.js -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<!-- custom logic -->
 <script src="{{ url_for('static', filename='js/apps/video-player.js') }}"></script>
 {% endblock %}

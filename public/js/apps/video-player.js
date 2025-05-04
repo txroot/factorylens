@@ -1,10 +1,9 @@
-// video-player.js
+// public/js/apps/video-player.js
+
 (() => {
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('video-player.js loaded');
 
-    /* ---------------------------- Helpers ---------------------------- */
-
+    /* ---------------------------- Toast ---------------------------- */
     function showToast(message, variant = 'success') {
       const toastEl = document.createElement('div');
       toastEl.className = `toast align-items-center text-bg-${variant} border-0 position-fixed bottom-0 end-0 m-3`;
@@ -18,81 +17,89 @@
       new bootstrap.Toast(toastEl, { delay: 2000 }).show();
     }
 
-    const clipboardCopy = async text => {
+    /* ------------------------ Clipboard Copy ------------------------ */
+    async function clipboardCopy(text) {
       try {
         await navigator.clipboard.writeText(text);
         showToast('Copied to clipboard');
       } catch {
         showToast('Copy failed', 'danger');
       }
-    };
+    }
 
-    /* -------------------------- URL Buttons -------------------------- */
-
-    // Copy button (textarea or input)
+    // Copy URL button
     document.body.addEventListener('click', e => {
       const btn = e.target.closest('.copy-btn');
-      if (btn) {
-        const container = btn.closest('.input-group');
-        const input = container?.querySelector('input, textarea');
-        if (input) clipboardCopy(input.value);
-      }
+      if (!btn) return;
+      const container = btn.closest('.input-group');
+      const field = container && container.querySelector('textarea, input');
+      if (field) clipboardCopy(field.value.trim());
     });
 
-    // Hide button
+    // Hide URL panel
     document.body.addEventListener('click', e => {
       const btn = e.target.closest('.hide-url-btn');
-      if (btn) {
-        const el = document.getElementById(btn.dataset.target);
-        if (el) bootstrap.Collapse.getOrCreateInstance(el).hide();
-      }
+      if (!btn) return;
+      const targetId = btn.dataset.target;
+      const panel = document.getElementById(targetId);
+      if (panel) bootstrap.Collapse.getOrCreateInstance(panel).hide();
     });
 
-    /* ------------------------- Snapshot Modal ------------------------ */
 
-    const snapshotModalEl = document.getElementById('snapshotModal');
-    const snapshotModal   = new bootstrap.Modal(snapshotModalEl);
-    const snapshotImg     = document.getElementById('snapshot-img');
-    const spinnerOverlay  = document.getElementById('snapshot-spinner');
-    const fullBtn         = document.getElementById('snapshot-full-btn');
-    const downloadBtn     = document.getElementById('snapshot-download-btn');
-    const pdfBtn          = document.getElementById('snapshot-pdf-btn');
-    const titleEl         = document.getElementById('snapshotModalTitle');
+    /* ------------------------- Snapshot Modal ----------------------- */
+    const snapshotModalEl   = document.getElementById('snapshotModal');
+    const snapshotModal     = new bootstrap.Modal(snapshotModalEl);
+    const snapshotImg       = document.getElementById('snapshot-img');
+    const spinnerOverlay    = document.getElementById('snapshot-spinner');
+    const titleEl           = document.getElementById('snapshotModalTitle');
+    const downloadBtn       = document.getElementById('snapshot-download-btn');
+    const pdfBtn            = document.getElementById('snapshot-pdf-btn');
+    const fullBtn           = document.getElementById('snapshot-full-btn');
 
-    let currentTimestamp = '';
     let currentFilenameBase = '';
 
+    function openSnapshotModal(camId, streamId=null) {
+      const now = new Date();
+      const ts = now.toISOString().replace('T',' ').split('.')[0];
+      currentFilenameBase = `snapshot_${camId}_${ts.replace(/[: ]/g,'_')}`;
+
+      titleEl.textContent = `Snapshot (${ts})`;
+      spinnerOverlay.classList.remove('d-none');
+      snapshotImg.classList.add('d-none');
+
+      let url = `/apps/video-player/snapshot/${camId}`;
+      if (streamId) url += `?stream_id=${streamId}`; 
+      else url += `?t=${Date.now()}`;
+
+      snapshotImg.src = url;
+      downloadBtn.href = url;
+      downloadBtn.download = `${currentFilenameBase}.jpg`;
+      pdfBtn.dataset.snapshotSrc = url;
+      snapshotModal.show();
+    }
+
+    // Default snapshot button
     document.querySelectorAll('.snapshot-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const camId   = btn.dataset.camId;
-        const camName = btn.dataset.camName;
-
-        const now = new Date();
-        const ts = [
-          now.getFullYear(),
-          String(now.getMonth() + 1).padStart(2, '0'),
-          String(now.getDate()).padStart(2, '0')
-        ].join('-') + '_' +
-          String(now.getHours()).padStart(2, '0') + '-' +
-          String(now.getMinutes()).padStart(2, '0') + '-' +
-          String(now.getSeconds()).padStart(2, '0');
-        const titleTs = ts.replace('_', ' / ').replace(/-/g, ':');
-
-        currentTimestamp = ts;
-        currentFilenameBase = `snapshot_${camName}_${ts}`;
-
-        titleEl.textContent = `Snapshot ${titleTs}`;
-        spinnerOverlay.classList.remove('d-none');
-        snapshotImg.classList.add('d-none');
-
-        const jpgUrl = `/apps/video-player/snapshot/${camId}?t=${Date.now()}`;
-        snapshotImg.src = jpgUrl;
-
-        downloadBtn.href = jpgUrl;
-        downloadBtn.download = `${currentFilenameBase}.jpg`;
-
-        snapshotModal.show();
+        const camId = btn.dataset.camId;
+        openSnapshotModal(camId);
       });
+    });
+
+    // Snapshot via direct URL
+    document.body.addEventListener('click', e => {
+      const el = e.target.closest('.snapshot-url-item');
+      if (!el) return;
+      e.preventDefault();
+      openSnapshotModal(el.dataset.camId);
+    });
+
+    // Snapshot via specific stream
+    document.body.addEventListener('click', e => {
+      const el = e.target.closest('.snapshot-stream-item');
+      if (!el) return;
+      e.preventDefault();
+      openSnapshotModal(el.dataset.camId, el.dataset.streamId);
     });
 
     snapshotImg.addEventListener('load', () => {
@@ -108,30 +115,26 @@
       }
     });
 
-    // PDF generation
-    pdfBtn.addEventListener('click', async (e) => {
+    pdfBtn.addEventListener('click', async e => {
       e.preventDefault();
       spinnerOverlay.classList.remove('d-none');
-
       try {
-        const resJpg = await fetch(snapshotImg.src);
-        const blobJpg = await resJpg.blob();
+        const jpgRes  = await fetch(pdfBtn.dataset.snapshotSrc);
+        const jpgBlob = await jpgRes.blob();
+        const form    = new FormData();
+        form.append('image', jpgBlob, `${currentFilenameBase}.jpg`);
 
-        const form = new FormData();
-        form.append('image', blobJpg, `${currentFilenameBase}.jpg`);
-
-        const resPdf = await fetch('/apps/video-player/snapshot/pdf', {
+        const pdfRes = await fetch('/apps/video-player/snapshot/pdf', {
           method: 'POST',
           body: form
         });
+        if (!pdfRes.ok) throw new Error('PDF generation failed');
 
-        if (!resPdf.ok) throw new Error(`PDF error: ${resPdf.status}`);
-
-        const pdfBlob = await resPdf.blob();
-        const url = URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${currentFilenameBase}.pdf`;
+        const pdfBlob = await pdfRes.blob();
+        const url     = URL.createObjectURL(pdfBlob);
+        const a       = document.createElement('a');
+        a.href        = url;
+        a.download    = `${currentFilenameBase}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -144,39 +147,11 @@
       }
     });
 
-    /* ---------------------- Video-Player (HLS) ----------------------- */
 
+    /* ---------------------- Video (HLS) Modal ----------------------- */
     const videoModalEl = document.getElementById('videoModal');
     const modalVideo   = document.getElementById('modal-video');
     const bsVideoModal = new bootstrap.Modal(videoModalEl);
-
-    document.querySelectorAll('.play-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const camId   = btn.dataset.camId;
-        const spinner = btn.parentElement.querySelector('.spinner-border');
-        spinner.classList.remove('d-none');
-
-        try {
-          const res = await fetch(`/apps/video-player/start/${camId}`, { method: 'POST' });
-          const { hls_url } = await res.json();
-          attachHls(hls_url);
-          videoModalEl.dataset.camId = camId;
-          bsVideoModal.show();
-        } catch {
-          showToast('Unable to start stream', 'danger');
-        } finally {
-          spinner.classList.add('d-none');
-        }
-      });
-    });
-
-    videoModalEl.addEventListener('hidden.bs.modal', () => {
-      const camId = videoModalEl.dataset.camId;
-      modalVideo.pause();
-      modalVideo.removeAttribute('src');
-      modalVideo.load();
-      if (camId) fetch(`/apps/video-player/stop/${camId}`, { method: 'POST' });
-    });
 
     function attachHls(src, retry = true) {
       if (window.Hls && Hls.isSupported()) {
@@ -196,5 +171,60 @@
         showToast('HLS not supported', 'warning');
       }
     }
+
+    // Start default stream
+    document.querySelectorAll('.play-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const camId   = btn.dataset.camId;
+        const spinner = btn.parentElement.querySelector('.spinner-border');
+        spinner.classList.remove('d-none');
+        try {
+          const res = await fetch(`/apps/video-player/start/${camId}`, { method: 'POST' });
+          const { hls_url } = await res.json();
+          attachHls(hls_url);
+          videoModalEl.dataset.camId = camId;
+          bsVideoModal.show();
+        } catch {
+          showToast('Unable to start stream', 'danger');
+        } finally {
+          spinner.classList.add('d-none');
+        }
+      });
+    });
+
+    // Start specific stream
+    document.body.addEventListener('click', async e => {
+      const el = e.target.closest('.play-stream-item');
+      if (!el) return;
+      e.preventDefault();
+      const camId    = el.dataset.camId;
+      const streamId = el.dataset.streamId;
+      const spinner  = el.closest('.card-body').querySelector('.spinner-border');
+      spinner.classList.remove('d-none');
+      try {
+        const res = await fetch(
+          `/apps/video-player/start/${camId}?stream_id=${streamId}`,
+          { method: 'POST' }
+        );
+        const { hls_url } = await res.json();
+        attachHls(hls_url);
+        videoModalEl.dataset.camId = camId;
+        bsVideoModal.show();
+      } catch {
+        showToast('Unable to start stream', 'danger');
+      } finally {
+        spinner.classList.add('d-none');
+      }
+    });
+
+    // Stop when modal closes
+    videoModalEl.addEventListener('hidden.bs.modal', () => {
+      const camId = videoModalEl.dataset.camId;
+      modalVideo.pause();
+      modalVideo.removeAttribute('src');
+      modalVideo.load();
+      if (camId) fetch(`/apps/video-player/stop/${camId}`, { method: 'POST' });
+    });
+
   });
 })();
