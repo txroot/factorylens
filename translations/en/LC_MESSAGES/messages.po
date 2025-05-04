@@ -265,3 +265,12 @@ msgstr "Configuration"
 
 msgid "settings_device_enabled"
 msgstr "Enabled"
+
+msgid "settings_device_model"
+msgstr "Model"
+
+msgid "settings_device_qr_code"
+msgstr "QR Code"
+
+msgid "settings_device_image_url"
+msgstr "Image URL"

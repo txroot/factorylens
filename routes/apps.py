@@ -1,12 +1,16 @@
-from flask import Blueprint, render_template, jsonify, current_app, Response
-from flask import url_for, request, abort
-from models.camera import Camera
-from models.camera_stream import CameraStream
+
 import subprocess, os, time, shlex
 import shutil
 import io
 import cv2
 import json
+
+from flask import Blueprint, render_template, jsonify, current_app, Response
+from flask import url_for, request, abort
+from models.camera import Camera
+from models.camera_stream import CameraStream
+from models.device import Device
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
@@ -17,7 +21,9 @@ ffmpeg_processes = {}
 
 @apps_bp.route('/video-player')
 def video_player():
-    cameras = Camera.query.all()
+    cameras = Camera.query.filter(
+        Camera.device.has(enabled=True)
+    ).all()
     return render_template('apps/video-player.hbs', cameras=cameras)
 
 @apps_bp.route('/apps/video-player/check/<int:cam_id>')

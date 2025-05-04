@@ -271,3 +271,12 @@ msgstr "Configuração"
 
 msgid "settings_device_enabled"
 msgstr "Ativado"
+
+msgid "settings_device_model"
+msgstr "Modelo"
+
+msgid "settings_device_qr_code"
+msgstr "Código QR"
+
+msgid "settings_device_image_url"
+msgstr "URL da Imagem"
