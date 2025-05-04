@@ -6,151 +6,171 @@
 
 <div class="row">
   {% for cam in cameras %}
-  <div class="col-md-4 mb-4 d-flex align-items-stretch">
-    <div class="card w-100">
+    {# figure out default stream: either explicit or first in list #}
+    {% if cam.default_stream %}
+      {% set def_stream = cam.default_stream %}
+    {% elif cam.streams|length > 0 %}
+      {% set def_stream = cam.streams[0] %}
+    {% else %}
+      {% set def_stream = None %}
+    {% endif %}
 
-      <!-- Title -->
-      <div class="card-header text-center">
-        <h5 class="mb-0">{{ cam.name }}</h5>
-      </div>
+    <div class="col-md-4 mb-4 d-flex align-items-stretch">
+      <div class="card w-100">
 
-      <!-- Snapshot + loader -->
-      <div class="p-3 d-flex justify-content-center">
-        <div class="ratio ratio-16x9 position-relative" style="max-width:300px;width:100%;">
-          <div id="spinner-{{ cam.id }}"
-               class="position-absolute top-0 start-0 w-100 h-100
-                      d-flex justify-content-center align-items-center bg-light">
-            <div class="spinner-border text-primary"></div>
+        <!-- Title -->
+        <div class="card-header text-center">
+          <h5 class="mb-0">{{ cam.name }}</h5>
+        </div>
+
+        <!-- Snapshot + loader -->
+        <div class="p-3 d-flex justify-content-center">
+          <div class="ratio ratio-16x9 position-relative" style="max-width:300px;width:100%;">
+            <div id="spinner-{{ cam.id }}"
+                 class="position-absolute top-0 start-0 w-100 h-100
+                        d-flex justify-content-center align-items-center bg-light">
+              <div class="spinner-border text-primary"></div>
+            </div>
+            <img src="{{ url_for('apps.video_snapshot', cam_id=cam.id) }}"
+                 alt="{{ cam.name }} snapshot"
+                 class="position-absolute top-0 start-0 w-100 h-100 snapshot-img"
+                 data-cam-id="{{ cam.id }}"
+                 style="object-fit:cover;">
           </div>
-          <img src="{{ url_for('apps.video_snapshot', cam_id=cam.id) }}"
-               alt="{{ cam.name }} snapshot"
-               class="position-absolute top-0 start-0 w-100 h-100 snapshot-img"
-               data-cam-id="{{ cam.id }}"
-               style="object-fit:cover;">
         </div>
-      </div>
 
-      <!-- Action buttons -->
-      <div class="card-body text-center">
+        <!-- Action buttons -->
+        <div class="card-body text-center">
 
-        {# Play dropdown #}
-        <div class="btn-group me-2">
-          <button type="button"
-                  class="btn btn-primary play-btn"
-                  data-cam-id="{{ cam.id }}"
-                  data-bs-toggle="modal"
-                  data-bs-target="#videoModal">
-            <i class="ti ti-player-play"></i>
-          </button>
-          <button type="button"
-                  class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-                  data-bs-toggle="dropdown"
+          {# Play dropdown + default stream on main button #}
+          <div class="btn-group me-2">
+            <button type="button"
+                    class="btn btn-primary play-btn"
+                    data-cam-id="{{ cam.id }}"
+                    {% if def_stream %}data-stream-id="{{ def_stream.id }}"{% endif %}
+                    data-bs-toggle="modal"
+                    data-bs-target="#videoModal"
+                    {% if not def_stream %}disabled data-bs-toggle="tooltip" title="No streams configured"{% endif %}>
+              <i class="ti ti-player-play"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="Choose stream"
+                    {% if cam.streams|length == 0 %}disabled{% endif %}>
+              <span class="visually-hidden">Toggle streams</span>
+            </button>
+            <ul class="dropdown-menu">
+              {% for stream in cam.streams %}
+                <li>
+                  <a class="dropdown-item play-stream-item"
+                     href="#"
+                     data-cam-id="{{ cam.id }}"
+                     data-stream-id="{{ stream.id }}">
+                    {{ stream.stream_type }} ({{ stream.resolution_w }}×{{ stream.resolution_h }})
+                  </a>
+                </li>
+              {% endfor %}
+              {% if cam.streams|length == 0 %}
+                <li><span class="dropdown-item text-muted">No streams configured</span></li>
+              {% endif %}
+            </ul>
+          </div>
+
+          {# Snapshot dropdown #}
+          <div class="btn-group me-2">
+            <button type="button"
+                    class="btn btn-info snapshot-btn"
+                    data-cam-id="{{ cam.id }}"
+                    data-cam-name="{{ cam.name|replace(' ', '_') }}">
+              <i class="ti ti-camera"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-info dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    title="Snapshot options"
+                    {% if not cam.snapshot_url and cam.streams|length == 0 %}disabled{% endif %}>
+              <span class="visually-hidden">Toggle snapshot options</span>
+            </button>
+            <ul class="dropdown-menu">
+              {% if cam.snapshot_url %}
+                <li>
+                  <a class="dropdown-item snapshot-url-item"
+                     href="#"
+                     data-cam-id="{{ cam.id }}">
+                    Direct URL
+                  </a>
+                </li>
+              {% endif %}
+              {% for stream in cam.streams %}
+                <li>
+                  <a class="dropdown-item snapshot-stream-item"
+                     href="#"
+                     data-cam-id="{{ cam.id }}"
+                     data-stream-id="{{ stream.id }}">
+                    {{ stream.stream_type }}
+                  </a>
+                </li>
+              {% endfor %}
+              {% if not cam.snapshot_url and cam.streams|length == 0 %}
+                <li><span class="dropdown-item text-muted">No snapshot options</span></li>
+              {% endif %}
+            </ul>
+          </div>
+
+          {# URL collapse & external link #}
+          {% if def_stream %}
+            {% set play_url = def_stream.full_url or def_stream.get_full_url() %}
+          {% else %}
+            {% set play_url = cam.stream_url or '' %}
+          {% endif %}
+
+          <button class="btn btn-secondary me-2"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#urlCollapse-{{ cam.id }}"
                   aria-expanded="false"
-                  title="Choose stream">
-            <span class="visually-hidden">Toggle streams</span>
+                  aria-controls="urlCollapse-{{ cam.id }}"
+                  title="Stream URL"
+                  {% if not play_url %}disabled{% endif %}>
+            <i class="ti ti-link"></i>
           </button>
-          <ul class="dropdown-menu">
-            {% for stream in cam.streams %}
-            <li>
-              <a class="dropdown-item play-stream-item"
-                 href="#"
-                 data-cam-id="{{ cam.id }}"
-                 data-stream-id="{{ stream.id }}">
-                {{ stream.stream_type }} ({{ stream.resolution_w }}×{{ stream.resolution_h }})
-              </a>
-            </li>
-            {% endfor %}
-            {% if cam.streams|length == 0 %}
-            <li><span class="dropdown-item text-muted">No streams configured</span></li>
-            {% endif %}
-          </ul>
-        </div>
 
-        {# Snapshot dropdown #}
-        <div class="btn-group me-2">
-          <button type="button"
-                  class="btn btn-info snapshot-btn"
-                  data-cam-id="{{ cam.id }}"
-                  data-cam-name="{{ cam.name|replace(' ', '_') }}">
-            <i class="ti ti-camera"></i>
-          </button>
-          <button type="button"
-                  class="btn btn-info dropdown-toggle dropdown-toggle-split"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  title="Snapshot options">
-            <span class="visually-hidden">Toggle snapshot options</span>
-          </button>
-          <ul class="dropdown-menu">
-            {% if cam.snapshot_url %}
-            <li>
-              <a class="dropdown-item snapshot-url-item"
-                 href="#"
-                 data-cam-id="{{ cam.id }}">
-                Direct URL
-              </a>
-            </li>
-            {% endif %}
-            {% for stream in cam.streams %}
-            <li>
-              <a class="dropdown-item snapshot-stream-item"
-                 href="#"
-                 data-cam-id="{{ cam.id }}"
-                 data-stream-id="{{ stream.id }}">
-                {{ stream.stream_type }}
-              </a>
-            </li>
-            {% endfor %}
-            {% if not cam.snapshot_url and cam.streams|length == 0 %}
-            <li><span class="dropdown-item text-muted">No snapshot options</span></li>
-            {% endif %}
-          </ul>
-        </div>
+          <a href="{{ play_url }}" target="_blank" class="btn btn-outline-secondary me-2"
+             {% if not play_url %}tabindex="-1" aria-disabled="true"{% endif %}>
+            <i class="ti ti-external-link"></i>
+          </a>
 
-        {# URL collapse & external link #}
-        <button class="btn btn-secondary me-2"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#urlCollapse-{{ cam.id }}"
-                aria-expanded="false"
-                aria-controls="urlCollapse-{{ cam.id }}"
-                title="Stream URL">
-          <i class="ti ti-link"></i>
-        </button>
+          <div class="spinner-border spinner-border-sm text-primary ms-2 d-none"></div>
 
-        <a href="{{ cam.stream_url }}" target="_blank" class="btn btn-outline-secondary me-2">
-          <i class="ti ti-external-link"></i>
-        </a>
-
-        <div class="spinner-border spinner-border-sm text-primary ms-2 d-none"></div>
-
-        <div class="collapse mt-3" id="urlCollapse-{{ cam.id }}">
-          <div class="border rounded bg-light p-2">
-            <div class="input-group">
-              <textarea class="form-control"
-                        rows="2"
-                        readonly
-                        style="resize:none; overflow:auto; white-space:pre-wrap;">
-{{ cam.stream_url }}</textarea>
-              <button class="btn btn-outline-secondary copy-btn"
-                      type="button"
-                      data-url="{{ cam.stream_url }}"
-                      aria-label="Copy URL">
-                <i class="ti ti-copy"></i>
-              </button>
-              <button class="btn btn-outline-danger hide-url-btn"
-                      type="button"
-                      data-target="urlCollapse-{{ cam.id }}"
-                      aria-label="Hide URL">
-                <i class="ti ti-x"></i>
-              </button>
+          <div class="collapse mt-3" id="urlCollapse-{{ cam.id }}">
+            <div class="border rounded bg-light p-2">
+              <div class="input-group">
+                <textarea class="form-control"
+                          rows="2"
+                          readonly
+                          style="resize:none; overflow:auto; white-space:pre-wrap;">{{ play_url }}</textarea>
+                <button class="btn btn-outline-secondary copy-btn"
+                        type="button"
+                        data-url="{{ play_url }}"
+                        aria-label="Copy URL"
+                        {% if not play_url %}disabled{% endif %}>
+                  <i class="ti ti-copy"></i>
+                </button>
+                <button class="btn btn-outline-danger hide-url-btn"
+                        type="button"
+                        data-target="urlCollapse-{{ cam.id }}"
+                        aria-label="Hide URL">
+                  <i class="ti ti-x"></i>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
-    </div>
-  </div>
   {% endfor %}
 </div>
 

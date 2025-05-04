@@ -23,11 +23,25 @@ def video_player():
 @apps_bp.route('/apps/video-player/check/<int:cam_id>')
 def check_playlist(cam_id):
     cam = Camera.query.get_or_404(cam_id)
-    path = os.path.join(app.static_folder, 'streams', cam.serial_number, 'index.m3u8')
-    return {
+    sid = request.args.get('stream_id', type=int)
+    if sid:
+        stream = CameraStream.query.get_or_404(sid)
+    else:
+        stream = (
+            cam.default_stream
+            or next((s for s in cam.streams if s.stream_type=='sub'), None)
+            or next((s for s in cam.streams if s.stream_type=='main'), None)
+        )
+    if not stream:
+        abort(400, "No stream configured")
+    path = os.path.join(
+        current_app.static_folder,
+        'streams', cam.serial_number, str(stream.id), 'index.m3u8'
+    )
+    return jsonify({
       "exists_on_disk": os.path.exists(path),
       "full_disk_path": path
-    }
+    })
 
 # --- helper ------------------------------------------------------------
 def probe_rtsp_codec(rtsp_url, timeout=2):
@@ -57,45 +71,40 @@ def probe_rtsp_codec(rtsp_url, timeout=2):
 @apps_bp.route("/video-player/start/<int:cam_id>", methods=["POST"])
 def start_stream(cam_id):
     cam = Camera.query.get_or_404(cam_id)
-
-    # 1) pick the stream record
-    sid = request.args.get("stream_id", type=int)
+    sid = request.args.get('stream_id', type=int)
     if sid:
         stream = CameraStream.query.get_or_404(sid)
     else:
         stream = (
             cam.default_stream
-            or next((s for s in cam.streams if s.stream_type=="sub"), None)
-            or next((s for s in cam.streams if s.stream_type=="main"), None)
+            or next((s for s in cam.streams if s.stream_type=='sub'), None)
+            or next((s for s in cam.streams if s.stream_type=='main'), None)
         )
     if not stream:
-        abort(400, "No streams configured for this camera")
+        abort(400, "No streams configured")
 
-    # 2) build input_url
+    # build input_url (full_url override → authified prefix/suffix)
     if stream.full_url:
         input_url = stream.full_url
     else:
-        input_url = stream.get_full_url(include_auth=True)
-
-    # 3) final fallback
+        input_url = stream.get_full_url(include_auth=True) or cam.stream_url
     if not input_url:
-        # last‐ditch: use the old camera.stream_url
-        input_url = getattr(cam, "stream_url", None)
-        if not input_url:
-            abort(400, "No valid RTSP URL found")
+        abort(400, "No valid RTSP URL")
 
-    # 4) decide HLS output folder per <serial>/<stream_id>
-    out_dir = os.path.join(current_app.static_folder,
-                           "streams", cam.serial_number, str(stream.id))
+    # output into static/streams/<serial>/<stream.id>/
+    out_dir = os.path.join(
+        current_app.static_folder,
+        "streams", cam.serial_number, str(stream.id)
+    )
     os.makedirs(out_dir, exist_ok=True)
     playlist = os.path.join(out_dir, "index.m3u8")
 
-    # 5) probe & choose copy vs transcode
+    # probe + choose copy vs transcode (your existing logic)
     try:
         codec, profile = probe_rtsp_codec(input_url)
     except subprocess.TimeoutExpired:
         codec, profile = None, None
-    SAFE_H264 = {"Constrained Baseline","Baseline","Main","High"}
+    SAFE_H264 = {"Constrained Baseline", "Baseline", "Main", "High"}
     if codec=="h264" and (profile in SAFE_H264 or profile is None):
         video_args = ["-c:v","copy"]
     else:
@@ -107,13 +116,11 @@ def start_stream(cam_id):
           "-b:v","2500k","-maxrate","3000k","-bufsize","6000k"
         ]
 
-    # 6) build & launch ffmpeg
     cmd = (["ffmpeg","-nostdin","-loglevel","error",
             "-rtsp_transport","tcp","-i",input_url]
            + video_args +
            ["-an","-f","hls",
-            "-hls_time","2",
-            "-hls_list_size","3",
+            "-hls_time","2","-hls_list_size","3",
             "-hls_flags","delete_segments+independent_segments",
             playlist])
     err_log = os.path.join(out_dir, "ffmpeg-error.log")
@@ -127,10 +134,12 @@ def start_stream(cam_id):
             break
         time.sleep(0.5)
 
-    hls_url = url_for("static",
-                      filename=f"streams/{cam.serial_number}/{stream.id}/index.m3u8")
+    hls_url = url_for(
+        "static",
+        filename=f"streams/{cam.serial_number}/{stream.id}/index.m3u8"
+    )
     return jsonify({"hls_url": hls_url})
-  
+
 @apps_bp.route('/video-player/stop/<int:cam_id>', methods=['POST'])
 def stop_stream(cam_id):
     # 1) Terminate the ffmpeg process if running

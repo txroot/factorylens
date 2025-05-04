@@ -27,38 +27,31 @@
       }
     }
 
-    // Copy URL button
     document.body.addEventListener('click', e => {
-      const btn = e.target.closest('.copy-btn');
-      if (!btn) return;
-      const container = btn.closest('.input-group');
-      const field = container && container.querySelector('textarea, input');
-      if (field) clipboardCopy(field.value.trim());
+      if (e.target.closest('.copy-btn')) {
+        const btn = e.target.closest('.copy-btn');
+        const input = btn.closest('.input-group').querySelector('textarea, input');
+        if (input) clipboardCopy(input.value.trim());
+      }
+      if (e.target.closest('.hide-url-btn')) {
+        const btn = e.target.closest('.hide-url-btn');
+        const panel = document.getElementById(btn.dataset.target);
+        if (panel) bootstrap.Collapse.getOrCreateInstance(panel).hide();
+      }
     });
-
-    // Hide URL panel
-    document.body.addEventListener('click', e => {
-      const btn = e.target.closest('.hide-url-btn');
-      if (!btn) return;
-      const targetId = btn.dataset.target;
-      const panel = document.getElementById(targetId);
-      if (panel) bootstrap.Collapse.getOrCreateInstance(panel).hide();
-    });
-
 
     /* ------------------------- Snapshot Modal ----------------------- */
-    const snapshotModalEl   = document.getElementById('snapshotModal');
-    const snapshotModal     = new bootstrap.Modal(snapshotModalEl);
-    const snapshotImg       = document.getElementById('snapshot-img');
-    const spinnerOverlay    = document.getElementById('snapshot-spinner');
-    const titleEl           = document.getElementById('snapshotModalTitle');
-    const downloadBtn       = document.getElementById('snapshot-download-btn');
-    const pdfBtn            = document.getElementById('snapshot-pdf-btn');
-    const fullBtn           = document.getElementById('snapshot-full-btn');
-
+    const snapshotModalEl = document.getElementById('snapshotModal');
+    const snapshotModal   = new bootstrap.Modal(snapshotModalEl);
+    const snapshotImg     = document.getElementById('snapshot-img');
+    const spinnerOverlay  = document.getElementById('snapshot-spinner');
+    const titleEl         = document.getElementById('snapshotModalTitle');
+    const downloadBtn     = document.getElementById('snapshot-download-btn');
+    const pdfBtn          = document.getElementById('snapshot-pdf-btn');
+    const fullBtn         = document.getElementById('snapshot-full-btn');
     let currentFilenameBase = '';
 
-    function openSnapshotModal(camId, streamId=null) {
+    function openSnapshotModal(camId, streamId = null) {
       const now = new Date();
       const ts = now.toISOString().replace('T',' ').split('.')[0];
       currentFilenameBase = `snapshot_${camId}_${ts.replace(/[: ]/g,'_')}`;
@@ -68,8 +61,7 @@
       snapshotImg.classList.add('d-none');
 
       let url = `/apps/video-player/snapshot/${camId}`;
-      if (streamId) url += `?stream_id=${streamId}`; 
-      else url += `?t=${Date.now()}`;
+      url += streamId ? `?stream_id=${streamId}` : `?t=${Date.now()}`;
 
       snapshotImg.src = url;
       downloadBtn.href = url;
@@ -78,28 +70,21 @@
       snapshotModal.show();
     }
 
-    // Default snapshot button
+    document.body.addEventListener('click', e => {
+      const byUrl = e.target.closest('.snapshot-url-item');
+      if (byUrl) {
+        e.preventDefault();
+        openSnapshotModal(byUrl.dataset.camId);
+      }
+      const byStream = e.target.closest('.snapshot-stream-item');
+      if (byStream) {
+        e.preventDefault();
+        openSnapshotModal(byStream.dataset.camId, byStream.dataset.streamId);
+      }
+    });
+
     document.querySelectorAll('.snapshot-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const camId = btn.dataset.camId;
-        openSnapshotModal(camId);
-      });
-    });
-
-    // Snapshot via direct URL
-    document.body.addEventListener('click', e => {
-      const el = e.target.closest('.snapshot-url-item');
-      if (!el) return;
-      e.preventDefault();
-      openSnapshotModal(el.dataset.camId);
-    });
-
-    // Snapshot via specific stream
-    document.body.addEventListener('click', e => {
-      const el = e.target.closest('.snapshot-stream-item');
-      if (!el) return;
-      e.preventDefault();
-      openSnapshotModal(el.dataset.camId, el.dataset.streamId);
+      btn.addEventListener('click', () => openSnapshotModal(btn.dataset.camId));
     });
 
     snapshotImg.addEventListener('load', () => {
@@ -109,9 +94,9 @@
 
     fullBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
-        snapshotImg.requestFullscreen().catch(() => {});
+        snapshotImg.requestFullscreen().catch(() =>{});
       } else {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() =>{});
       }
     });
 
@@ -139,8 +124,7 @@
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-      } catch (err) {
-        console.error(err);
+      } catch {
         showToast('Failed to generate PDF', 'danger');
       } finally {
         spinnerOverlay.classList.add('d-none');
@@ -172,58 +156,42 @@
       }
     }
 
-    // Start default stream
-    document.querySelectorAll('.play-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const camId   = btn.dataset.camId;
-        const spinner = btn.parentElement.querySelector('.spinner-border');
-        spinner.classList.remove('d-none');
-        try {
-          const res = await fetch(`/apps/video-player/start/${camId}`, { method: 'POST' });
-          const { hls_url } = await res.json();
-          attachHls(hls_url);
-          videoModalEl.dataset.camId = camId;
-          bsVideoModal.show();
-        } catch {
-          showToast('Unable to start stream', 'danger');
-        } finally {
-          spinner.classList.add('d-none');
-        }
-      });
-    });
-
-    // Start specific stream
+    // Unified “play” handler for both main button and dropdown items
     document.body.addEventListener('click', async e => {
-      const el = e.target.closest('.play-stream-item');
-      if (!el) return;
+      const trigger = e.target.closest('.play-btn, .play-stream-item');
+      if (!trigger) return;
       e.preventDefault();
-      const camId    = el.dataset.camId;
-      const streamId = el.dataset.streamId;
-      const spinner  = el.closest('.card-body').querySelector('.spinner-border');
-      spinner.classList.remove('d-none');
+
+      const camId    = trigger.dataset.camId;
+      const streamId = trigger.dataset.streamId;
+      const cardBody = trigger.closest('.card-body');
+      const spinner  = cardBody && cardBody.querySelector('.spinner-border');
+      if (spinner) spinner.classList.remove('d-none');
+
       try {
-        const res = await fetch(
-          `/apps/video-player/start/${camId}?stream_id=${streamId}`,
-          { method: 'POST' }
-        );
+        let url = `/apps/video-player/start/${camId}`;
+        if (streamId) url += `?stream_id=${streamId}`;
+        const res = await fetch(url, { method: 'POST' });
         const { hls_url } = await res.json();
+
         attachHls(hls_url);
         videoModalEl.dataset.camId = camId;
         bsVideoModal.show();
       } catch {
         showToast('Unable to start stream', 'danger');
       } finally {
-        spinner.classList.add('d-none');
+        if (spinner) spinner.classList.add('d-none');
       }
     });
 
-    // Stop when modal closes
     videoModalEl.addEventListener('hidden.bs.modal', () => {
       const camId = videoModalEl.dataset.camId;
       modalVideo.pause();
       modalVideo.removeAttribute('src');
       modalVideo.load();
-      if (camId) fetch(`/apps/video-player/stop/${camId}`, { method: 'POST' });
+      if (camId) {
+        fetch(`/apps/video-player/stop/${camId}`, { method: 'POST' });
+      }
     });
 
   });
