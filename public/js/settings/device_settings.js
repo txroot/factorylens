@@ -216,10 +216,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // ── Delete device ───────────────────────────────────────────────────
-  table.on("click", ".delete-btn", () => {
-    pendingDeleteId = this.dataset.id;
+  table.on("click", ".delete-btn", function () {
+    pendingDeleteId = this.getAttribute("data-id");
     confirmModal.show();
   });
+
   confirmYes.addEventListener("click", () => {
     fetch(`/settings/devices/${pendingDeleteId}`, { method: "DELETE" })
       .then(r => { if (!r.ok) throw new Error(r.statusText); })
