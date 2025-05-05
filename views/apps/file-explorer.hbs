@@ -1,57 +1,69 @@
 {% extends "layouts/dash.hbs" %}
 
 {% block head_styles %}
-  <!-- jQuery‑UI theme (for marquee & selection) -->
-  <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
-  <!-- elFinder core -->
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='vendor/elfinder/css/elfinder.min.css') }}">
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='vendor/elfinder/css/theme.css') }}">
+  <!-- jQuery-UI theme (for marquee & selection) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css"
+  />
+  <!-- elFinder core styles -->
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='vendor/elfinder/css/elfinder.min.css') }}"
+  >
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='vendor/elfinder/css/theme.css') }}"
+  >
 {% endblock %}
 
 {% block content %}
-  {% if devices|length == 0 %}
-    <!-- nice empty‑state -->
-    <div class="d-flex flex-column align-items-center justify-content-center"
-         style="height: 500px">
-      <img src="{{ url_for('static', filename='img/file-explorer/undraw_file-sync.svg') }}"
-           alt="no devices" style="max-width:280px" class="mb-4">
+  {% if devices|length == 0 %}
+    <!-- Empty-state when no storage devices are enabled -->
+    <div class="d-flex flex-column align-items-center justify-content-center" style="height:500px">
+      <img
+        src="{{ url_for('static', filename='img/file-explorer/undraw_file-sync.svg') }}"
+        alt="{{ _('No devices') }}"
+        class="mb-4"
+        style="max-width:280px"
+      />
       <h4 class="text-secondary mb-2">{{ _("No storage devices found") }}</h4>
       <p class="text-muted text-center" style="max-width:420px">
         {{ _("There are no enabled storage devices yet. Go to") }}
-        <a href="{{ url_for('devices.list') }}">{{ _("Device Manager") }}</a>
+        <a href="{{ url_for('settings.devices_page') }}">{{ _("Device Manager") }}</a>
         {{ _("to add or enable a Local, FTP or SFTP storage.") }}
       </p>
     </div>
-
   {% else %}
-    <!-- device switcher (Bootstrap nav‑pills) -->
+    <!-- Bootstrap pills to switch volumes -->
     <ul class="nav nav-pills mb-3" id="deviceTabs" role="tablist">
       {% for dev in devices %}
         <li class="nav-item" role="presentation">
-          <button class="nav-link {% if loop.first %}active{% endif %}"
-                  id="dev-{{ dev.id }}-tab"
-                  data-dev="{{ dev.id }}"
-                  data-bs-toggle="pill"
-                  type="button"
-                  role="tab">
-            {{ dev.name }}
+          <button
+            class="nav-link{% if loop.first %} active{% endif %}"
+            data-dev="{{ dev.id }}"
+            data-bs-toggle="pill"
+            type="button"
+            role="tab"
+          >
+            {{ _(dev.name) }}
           </button>
         </li>
       {% endfor %}
     </ul>
 
-    <!-- elFinder container -->
+    <!-- elFinder mounts here -->
     <div id="fileExplorer" style="height:600px"></div>
   {% endif %}
 {% endblock %}
 
 {% block scripts %}
-  {% if devices|length > 0 %}
+  {% if devices|length > 0 %}
+    <!-- jQuery-UI (required by elFinder) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <!-- full build of elFinder (includes Quicklook) -->
     <script src="{{ url_for('static', filename='vendor/elfinder/js/elfinder.full.js') }}"></script>
+    <!-- custom initializer -->
     <script src="{{ url_for('static', filename='js/apps/file-explorer.js') }}"></script>
   {% endif %}
 {% endblock %}

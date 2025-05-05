@@ -280,3 +280,18 @@ msgstr "Código QR"
 
 msgid "settings_device_image_url"
 msgstr "URL da Imagem"
+
+msgid "No storage devices found"
+msgstr "Nenhum dispositivo de armazenamento encontrado"
+
+msgid "There are no enabled storage devices yet. Go to"
+msgstr "Ainda não existem dispositivos de armazenamento ativados. Vá para"
+
+msgid "Device Manager"
+msgstr "Gestor de Dispositivos"
+
+msgid "to add or enable a Local, FTP or SFTP storage."
+msgstr "para adicionar ou ativar um armazenamento Local, FTP ou SFTP."
+
+msgid "No devices"
+msgstr "Sem dispositivos"
