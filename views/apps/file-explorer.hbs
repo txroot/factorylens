@@ -1,9 +1,11 @@
 {% extends "layouts/dash.hbs" %}
 
-{# ① elFinder CSS – local path #}
 {% block head_styles %}
+  <!-- elFinder CSS (theme + core) -->
   <link rel="stylesheet"
         href="{{ url_for('static', filename='vendor/elfinder/css/elfinder.min.css') }}">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='vendor/elfinder/css/theme.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -17,8 +19,10 @@
   <div id="fileExplorer" style="height:600px"></div>
 {% endblock %}
 
-{# ② JS – **no extra jQuery** (layouts/dash already loads it) #}
 {% block scripts %}
+  <!-- jQuery UI (must come before elFinder) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+  <!-- elFinder core -->
   <script src="{{ url_for('static', filename='vendor/elfinder/js/elfinder.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/apps/file-explorer.js') }}"></script>
 {% endblock %}
