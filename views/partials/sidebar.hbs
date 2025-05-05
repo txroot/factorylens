@@ -29,7 +29,7 @@
                     <span class="hide-menu">{{ gettext("apps") }}</span>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link text-muted pe-none" href="#" style="cursor: not-allowed;">
+                    <a class="sidebar-link" href="{{ url_for('apps_device_control.device_control') }}">
                         <span><i class="ti ti-device-laptop"></i></span>
                         <span class="hide-menu">{{ gettext("device_control") }}</span>
                     </a>

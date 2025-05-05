@@ -1,0 +1,84 @@
+{% extends "layouts/dash.hbs" %}
+
+{% block head %}
+  {{ super() }}
+  <!-- Tabler Icons via CDN -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/@tabler/icons@latest/iconfont/tabler-icons.min.css">
+{% endblock %}
+
+{% block content %}
+<section class="container-fluid">
+  <h2 class="mt-4 mb-3">{{ gettext("device_control_title") }}</h2>
+
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+    {% for dev in devices %}
+    <div class="col">
+      <div class="card h-100 shadow-sm" data-dev-id="{{ dev.id }}">
+        <!-- Header -->
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <i class="ti ti-device-laptop fs-5 me-2"></i>
+            <h6 class="mb-0">{{ dev.name }}</h6>
+          </div>
+          <span>
+            <i class="ti ti-circle-fill text-{{ 'success' if dev.status=='online' else 'secondary' }}"></i>
+            <small class="ms-1 text-{{ 'success' if dev.status=='online' else 'secondary' }}">
+              {{ dev.status }}
+            </small>
+          </span>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body d-flex flex-column">
+
+          <!-- Relay switches -->
+          <div class="d-flex justify-content-around mb-3">
+            {% for ch in [0,1] %}
+            <div class="form-check form-switch">
+              <input class="form-check-input relay-toggle"
+                     type="checkbox"
+                     id="relay-{{ dev.id }}-{{ ch }}"
+                     data-channel="{{ ch }}">
+              <label class="form-check-label" for="relay-{{ dev.id }}-{{ ch }}">
+                <i class="ti ti-power fs-6 me-1"></i> R{{ ch }}
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Inputs with bulb icons -->
+          <div class="d-flex justify-content-around mb-3">
+            {% for idx in [0,1] %}
+            <div class="text-center">
+              <i id="input-icon-{{ dev.id }}-{{ idx }}"
+                 class="ti ti-bulb-off fs-4 text-secondary"></i>
+              <div class="small mt-1">I{{ idx }}</div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Sensors: temp + plug icon for wattage -->
+          <div class="mt-auto d-flex justify-content-between small text-muted">
+            <div>
+              <i class="ti ti-temperature fs-6 me-1"></i>
+              <span id="temp-{{ dev.id }}">—°C</span>
+            </div>
+            <div>
+              <i class="ti ti-plug fs-6 me-1"></i>
+              <span id="power-{{ dev.id }}">— W</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/apps/device-control.js') }}"></script>
+{% endblock %}

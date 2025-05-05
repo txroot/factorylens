@@ -35,6 +35,7 @@ from routes.apps.apps import apps_bp
 from routes.storage import storage_bp
 from routes.apps.storage import apps_storage_bp
 from routes.apps.elfinder_connector import elfinder_bp
+from routes.apps.device_control import apps_ctrl_bp
 
 # Import Mail Client
 from utils.mail_client import mail
@@ -45,6 +46,9 @@ from config.settings import Config
 # Import Tasks
 from apscheduler.schedulers.background import BackgroundScheduler
 from utils.tasks import poll_camera_status
+
+# Import MQTT
+from controllers.mqtt import init_mqtt
 
 # Internationalization
 from flask_babel import Babel
@@ -109,6 +113,7 @@ def create_app():
     app.register_blueprint(storage_bp)
     app.register_blueprint(apps_storage_bp)
     app.register_blueprint(elfinder_bp)
+    app.register_blueprint(apps_ctrl_bp)
 
     # ——— START POLLING SCHEDULER ———
     scheduler = BackgroundScheduler()
@@ -121,6 +126,10 @@ def create_app():
         replace_existing=True
     )
     #scheduler.start()
+
+    # ---------- MQTT worker ----------
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        init_mqtt(app)
 
     return app
 

@@ -1,66 +1,86 @@
 # controllers/mqtt.py
 
-import json
+import threading
+import os
 from datetime import datetime
-from config.database import db
-from models.camera import Camera
-from paho.mqtt.client import Client
 
-# If you have a FunctionRequest model, import it here:
-# from models.function_request import FunctionRequest
+import paho.mqtt.client as mqtt
+from extensions import db
+from models.device import Device
 
-def execute_function(function: str, parameters: list) -> dict:
+_MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
+_MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+_CLIENT_ID = "factorylens-backend"
+
+
+def _on_connect(client, userdata, flags, rc, properties=None):
     """
-    Stub for your actual function logic.
-    Return a dict with at least 'status' and 'message' keys.
+    userdata will be your Flask `app`.
     """
-    if function.lower() == "capture":
-        # TODO: integrate with your camera SDK
-        return {"status": "ok", "message": "Image captured successfully"}
-    else:
-        return {"status": "error", "message": f"Unknown function '{function}'"}
+    app = userdata
+    app.logger.info("MQTT connected RC=%s", rc)
+    client.subscribe("shellies/+/+/#")
 
-def on_connect(client: Client, userdata, flags, rc):
-    print(f"MQTT connected with result code {rc}")
-    client.subscribe("/camera/function/set")
 
-def on_message(client: Client, userdata, msg):
+def _on_message(client, userdata, msg):
+    app = userdata
     try:
-        payload = json.loads(msg.payload.decode())
-        func       = payload.get("Function", "")
-        params     = payload.get("Parameters", [])
-        source     = payload.get("Source", "")
-        ts_str     = payload.get("TimeStamp")
-        ts         = datetime.fromisoformat(ts_str) if ts_str else datetime.utcnow()
+        topic = msg.topic
+        payload = msg.payload.decode()
+        parts = topic.split("/")
+        if len(parts) < 3:
+            return
 
-        # 1. Execute the requested function
-        result_info = execute_function(func, params)
+        dev_id = parts[1]      # e.g. "switch-0081F2"
+        group  = parts[2]      # e.g. "relay", "input", "temperature", etc.
 
-        # 2. (Optional) persist to DB
-        # from models.function_request import FunctionRequest
-        # fr = FunctionRequest(
-        #     source=source,
-        #     function_name=func,
-        #     parameters=json.dumps(params),
-        #     timestamp=ts,
-        #     result=result_info["message"]
-        # )
-        # db.session.add(fr); db.session.commit()
+        dev = Device.query.filter_by(mqtt_client_id=dev_id).first()
+        if not dev:
+            return
 
-        # 3. Publish status back
-        status = {
-            "Request": payload,
-            "Result": result_info
-        }
-        client.publish("/camera/function/status", json.dumps(status))
+        values = dev.values or {}
+        if group == "relay" and len(parts) >= 5:
+            ch, prop = parts[3], parts[4]
+            values.setdefault("relay", {}) \
+                  .setdefault(ch, {})[prop] = payload
+
+        elif group == "input" and len(parts) >= 4:
+            idx = parts[3]
+            values.setdefault("input", {})[idx] = int(payload)
+
+        elif group in ("temperature", "temperature_f", "voltage"):
+            values[group] = float(payload)
+
+        dev.values = values
+        dev.status = "online"
+        dev.last_seen = datetime.utcnow()
+        db.session.commit()
 
     except Exception as e:
-        print("Error in MQTT message handler:", e)
+        app.logger.error("MQTT msg-handler error: %s", e)
 
-def init_mqtt(client: Client):
+
+def init_mqtt(app):
     """
-    Call this during your app startup (e.g. from utils/mqtt_client.py).
+    Should be called once from create_app().
+    Spins up a background thread for the MQTT loop, 
+    and uses Flask `app` as Paho userdata so our callbacks can log safely.
     """
-    client.on_connect = on_connect
-    client.on_message = on_message
-    # client.connect(...) and loop_start() remain in your mqtt utility
+    client = mqtt.Client(
+        client_id=_CLIENT_ID,
+        protocol=mqtt.MQTTv5  # or MQTTv311 if your broker only speaks 3.1.1
+    )
+
+    # stash the Flask app in userdata
+    client.user_data_set(app)
+
+    client.on_connect = _on_connect
+    client.on_message = _on_message
+
+    client.connect(_MQTT_HOST, _MQTT_PORT, keepalive=30)
+
+    th = threading.Thread(target=client.loop_forever, daemon=True)
+    th.start()
+
+    app.mqtt = client
+    app.logger.info("MQTT thread started")
