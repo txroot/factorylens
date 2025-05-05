@@ -264,3 +264,36 @@ def list_models():
         query = query.filter_by(category_id=cat_id)
     rows = query.order_by(DeviceModel.name).all()
     return jsonify([{"id": m.id, "name": m.name} for m in rows])
+
+'''
+Shelly 2.5 MQTT Schema
+
+{
+  "shellies": {
+    "switch-0081F2": {
+      "relay": {
+        "0": {
+          "state": "off",
+          "power": {},
+          "energy": 0
+        },
+        "1": {
+          "state": "off",
+          "power": {},
+          "energy": 0
+        }
+      },
+      "input": {
+        "0": 0,
+        "1": 0
+      },
+      "temperature": 44.20,
+      "temperature_f": 111.55,
+      "overtemperature": 0,
+      "temperature_status": "Normal",
+      "voltage": {}
+    }
+  }
+}
+
+'''
