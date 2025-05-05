@@ -29,7 +29,7 @@
                     <span class="hide-menu">{{ gettext("apps") }}</span>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link" href="#">
+                    <a class="sidebar-link text-muted pe-none" href="#" style="cursor: not-allowed;">
                         <span><i class="ti ti-device-laptop"></i></span>
                         <span class="hide-menu">{{ gettext("device_control") }}</span>
                     </a>
@@ -47,31 +47,31 @@
                     </a>
                 </li>
 
-                <!-- System Logs Section -->
+                <!-- System Logs Section (Muted) -->
                 <li class="nav-small-cap">
-                    <i class="ti ti-dots nav-small-cap-icon fs-4"></i>
-                    <span class="hide-menu">{{ gettext("system_logs") }}</span>
+                    <i class="ti ti-dots nav-small-cap-icon fs-4 text-muted"></i>
+                    <span class="hide-menu text-muted">{{ gettext("system_logs") }}</span>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link" href="#">
+                    <a class="sidebar-link text-muted pe-none" href="#" style="cursor: not-allowed;">
                         <span><i class="ti ti-camera"></i></span>
                         <span class="hide-menu text-capitalize">{{ gettext("cameras") }}</span>
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link" href="#">
+                    <a class="sidebar-link text-muted pe-none" href="#" style="cursor: not-allowed;">
                         <span><i class="ti ti-devices"></i></span>
                         <span class="hide-menu text-capitalize">{{ gettext("devices") }}</span>
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link" href="#">
+                    <a class="sidebar-link text-muted pe-none" href="#" style="cursor: not-allowed;">
                         <span><i class="ti ti-message-circle"></i></span>
                         <span class="hide-menu">{{ gettext("communication") }}</span>
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link" href="#">
+                    <a class="sidebar-link text-muted pe-none" href="#" style="cursor: not-allowed;">
                         <span><i class="ti ti-database"></i></span>
                         <span class="hide-menu">{{ gettext("file_storage") }}</span>
                     </a>
@@ -83,10 +83,10 @@
                     <span class="hide-menu">{{ gettext("settings") }}</span>
                 </li>
                 <li class="sidebar-item">
-                <a class="sidebar-link" href="/settings/devices">
-                    <span><i class="ti ti-devices-bolt"></i></span>
-                    <span class="hide-menu text-capitalize">{{ t("devices") }}</span>
-                </a>
+                    <a class="sidebar-link" href="/settings/devices">
+                        <span><i class="ti ti-devices-bolt"></i></span>
+                        <span class="hide-menu text-capitalize">{{ t("devices") }}</span>
+                    </a>
                 </li>
             </ul>
         </nav>
@@ -101,10 +101,11 @@
             </div>
         </div>
         <figure class="mt-3 align-items-center text-center">
-            
-           <small> <blockquote class="blockquote">
-                <p>{{ gettext("sidebar_quote") }}</p>
-            </blockquote></small>
+            <small>
+                <blockquote class="blockquote">
+                    <p>{{ gettext("sidebar_quote") }}</p>
+                </blockquote>
+            </small>
             <figcaption class="blockquote-footer">
                 {{ gettext("sidebar_quote_author") }}
             </figcaption>

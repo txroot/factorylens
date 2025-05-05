@@ -35,3 +35,6 @@ opencv-python-headless==4.9.0.80
 
 # Tasks
 apscheduler==3.10.3
+
+# File Explorer
+paramiko==2.7.2
