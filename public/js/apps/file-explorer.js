@@ -3,32 +3,42 @@ $(function() {
   const connectorUrl = '/storage/connector';
   const baseUrl      = '/assets/vendor/elfinder/';
 
-  // Build elFinder options
   const options = {
-    url           : connectorUrl,
-    customData    : { dev: $('#deviceSelect').val() },
-    baseUrl       : baseUrl,
-    cssAutoLoad   : false,
-    debug         : true,
-    commands      : [
+    url        : connectorUrl,
+    customData : { dev: $('#deviceSelect').val() },
+    baseUrl    : baseUrl,
+    cssAutoLoad: false,
+    debug      : true,
+
+    // make sure select/copy/cut/paste are available
+    commands   : [
       'open','reload','home','up','back','forward',
+      'select','copy','cut','paste','rm',
       'mkdir','upload','download','quicklook'
     ],
+
     uiOptions: {
+      // enable multi-select in the directory view
+      cwd: {
+        multiSelect: true,
+        multiDrag:   true
+      },
       toolbar: [
+        ['copy','cut','paste','rm'],
         ['mkdir','upload','download','quicklook'],
         ['back','forward','up','reload']
       ]
     },
+
     commandsOptions: {
       quicklook: {
         autoLoad        : true,
         previewMimeRegex: /^(image|text)\//
       }
     },
+
     handlers: {
       init: function(e, fm) {
-        // re-bind device selector on every init
         $('#deviceSelect')
           .off('change')
           .on('change', function() {
