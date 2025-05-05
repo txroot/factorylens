@@ -1,0 +1,31 @@
+{{!-- Extend main app shell layout --}}
+{{#extends "layouts/dash"}}
+
+{{#block content}}
+  <h3>{{ gettext("file_explorer") }}</h3>
+  <div>
+    <label for="deviceSelect">{{ gettext("select_storage_device") }}</label>
+    <select id="deviceSelect" class="form-select">
+      {{#each devices as |dev|}}
+        <option value="{{dev.id}}">{{dev.name}}</option>
+      {{/each}}
+    </select>
+  </div>
+
+  <div id="fileExplorer">
+    {{!-- JS will load /storage/{{selectedId}}/files via AJAX --}}
+  </div>
+{{/block}}
+
+{{#block scripts}}
+<script>
+  document.getElementById('deviceSelect').addEventListener('change', async function() {
+    const id = this.value;
+    const resp = await fetch(`/storage/${id}/files`);
+    const html = await resp.text();
+    document.getElementById('fileExplorer').innerHTML = html;
+  });
+  // trigger initial load
+  document.getElementById('deviceSelect').dispatchEvent(new Event('change'));
+</script>
+{{/block}}

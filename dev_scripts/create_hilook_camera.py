@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# dev_scripts/create_hilook_camera.py
 """
 Create a Hilook IPC‑B140H Camera + matching Device entry,
 linked to the DeviceModel in the database.

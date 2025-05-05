@@ -23,7 +23,7 @@ from models.camera import Camera
 from models.camera_stream import CameraStream
 
 # Import Controllers
-import controllers.device_controller
+import controllers.device
 
 # Import Blueprints
 from middleware.auth import auth_bp
@@ -35,6 +35,8 @@ from routes.language import language_bp
 from routes.notifications import notifications_bp
 from routes.settings import settings_bp
 from routes.apps import apps_bp
+from routes.storage import storage_bp
+from routes.apps.storage import apps_storage_bp
 
 # Import Mail Client
 from utils.mail_client import mail
@@ -101,6 +103,8 @@ def create_app():
     app.register_blueprint(notifications_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(apps_bp)
+    app.register_blueprint(storage_bp)
+    app.register_blueprint(apps_storage_bp)
 
     # ——— START POLLING SCHEDULER ———
     scheduler = BackgroundScheduler()

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# dev_scripts/seed_device_catalog.py
 """
 Seed initial DeviceCategory, DeviceModel and DeviceSchema rows.
 

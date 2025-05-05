@@ -1,6 +1,6 @@
 # Factory Lens
 
-**Factory Lens** is a modular event-driven automation platform developed by **Microlumin Lda**. It integrates cameras, IoT modules, loggers, and intelligent processors into a unified system for monitoring, logging, and executing automated actions based on device events.
+**Factory Lens** is a modular event-driven automation platform developed by **Microlumin Lda**. It integrates cameras, IoT modules, loggers, and intelligent processors into a unified system for monitoring, logging, and executing automated actions based on device events. It is a web-based application built using Python (Flask) and MVC model.
 
 ---
 
@@ -43,7 +43,7 @@ This design simplifies integration, flow building, and system management by maki
 - **Module** (custom processing units)
 - **IoT Device** (e.g. sensors, actuators)
 - **Logger** (system or device logs)
-- **Storage Unit**
+- **Storage Unit**(multiple target options for file storing)
 - **AI Processor** (computer vision, log analysis)
 
 > All devices are treated uniformly via a shared API interface.
