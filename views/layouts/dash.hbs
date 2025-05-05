@@ -45,6 +45,10 @@
             padding-top: 20px;
         }
     </style>
+    
+    {# Allow child templates to inject extra styles #}
+    {% block head_styles %}{% endblock %}
+
   </head>
   <body>
     <!-- Preloader -->

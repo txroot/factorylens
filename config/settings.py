@@ -67,3 +67,5 @@ class Config:
     # BABEL
     BABEL_DEFAULT_LOCALE = 'en'
     BABEL_DEFAULT_TIMEZONE = 'UTC'
+
+    STORAGE_ROOT = os.getenv('STORAGE_ROOT', '/app/storage')

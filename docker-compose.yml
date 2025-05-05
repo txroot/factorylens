@@ -1,3 +1,4 @@
+# docker-compose.yml file for Factory Lens
 version: "3.8"
 
 services:
@@ -9,6 +10,7 @@ services:
       - "8082:8082"
     volumes:
       - .:/app
+      - ./storage:/app/storage       # ← share host ./storage ↔ container /app/storage
     env_file:
       - .env
     environment:

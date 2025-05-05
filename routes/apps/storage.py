@@ -1,3 +1,5 @@
+# routes/apps/storage.py
+
 from flask import Blueprint, render_template
 from controllers.apps.storage import get_local_storage_devices
 

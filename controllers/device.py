@@ -1,4 +1,4 @@
-# controllers/device_controller.py
+# controllers/device.py
 
 from flask import jsonify, request, abort
 from extensions import db

@@ -1,5 +1,7 @@
+# routes/settings.py
+
 from flask import Blueprint, render_template, request
-from controllers.device_controller import (
+from controllers.device import (
     list_devices,
     get_device,
     create_device,

@@ -22,9 +22,6 @@ from models.device import Device
 from models.camera import Camera
 from models.camera_stream import CameraStream
 
-# Import Controllers
-import controllers.device
-
 # Import Blueprints
 from middleware.auth import auth_bp
 from routes.users import users_bp
@@ -34,9 +31,10 @@ from routes.help import help_bp
 from routes.language import language_bp
 from routes.notifications import notifications_bp
 from routes.settings import settings_bp
-from routes.apps import apps_bp
+from routes.apps.apps import apps_bp
 from routes.storage import storage_bp
 from routes.apps.storage import apps_storage_bp
+from routes.apps.elfinder_connector import elfinder_bp
 
 # Import Mail Client
 from utils.mail_client import mail
@@ -62,7 +60,12 @@ def get_locale():
     return request.accept_languages.best_match(['en', 'pt'])
 
 def create_app():
-    app = Flask(__name__, template_folder="views", static_folder="public")
+    app = Flask(
+        __name__,
+        template_folder="views",
+        static_folder="public",
+        static_url_path="/assets"   # now public/ ↔ /assets
+    )
     app.config.from_object(Config)
     
     # Bind database
@@ -105,6 +108,7 @@ def create_app():
     app.register_blueprint(apps_bp)
     app.register_blueprint(storage_bp)
     app.register_blueprint(apps_storage_bp)
+    app.register_blueprint(elfinder_bp)
 
     # ——— START POLLING SCHEDULER ———
     scheduler = BackgroundScheduler()
@@ -112,11 +116,11 @@ def create_app():
     scheduler.add_job(
         func=poll_camera_status,
         trigger='interval',
-        seconds=30,
+        seconds=300,
         id='poll_camera_status',
         replace_existing=True
     )
-    scheduler.start()
+    #scheduler.start()
 
     return app
 
