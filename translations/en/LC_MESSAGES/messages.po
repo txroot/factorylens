@@ -289,3 +289,60 @@ msgstr "to add or enable a Local, FTP or SFTP storage."
 
 msgid "No devices"
 msgstr "No devices"
+
+msgid "Factory Lens – Overview"
+msgstr "Factory Lens – Overview"
+
+msgid "Real‑time status of devices and events (demo data)."
+msgstr "Real‑time status of devices and events (demo data)."
+
+msgid "Total Devices"
+msgstr "Total Devices"
+
+msgid "4 added this week"
+msgstr "4 added this week"
+
+msgid "Cameras"
+msgstr "Cameras"
+
+msgid "All online"
+msgstr "All online"
+
+msgid "IoT Modules"
+msgstr "IoT Modules"
+
+msgid "2 offline"
+msgstr "2 offline"
+
+msgid "Alerts Today"
+msgstr "Alerts Today"
+
+msgid "Last alert"
+msgstr "Last alert"
+
+msgid "min ago"
+msgstr "min ago"
+
+msgid "Events (last 24 h)"
+msgstr "Events (last 24 h)"
+
+msgid "Latest Alerts"
+msgstr "Latest Alerts"
+
+msgid "Time"
+msgstr "Time"
+
+msgid "Device"
+msgstr "Device"
+
+msgid "Severity"
+msgstr "Severity"
+
+msgid "High"
+msgstr "High"
+
+msgid "Medium"
+msgstr "Medium"
+
+msgid "Info"
+msgstr "Info"
