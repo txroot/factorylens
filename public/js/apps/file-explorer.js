@@ -5,29 +5,24 @@ $(function () {
   const baseUrl      = '/assets/vendor/elfinder/';
   let   fmInstance   = null;
 
-  // When a pill is shown, re-init elFinder on that device
-  $('#deviceTabs').on('shown.bs.tab', 'button[data-bs-toggle="pill"]', function () {
-    initElfinderFor(this.dataset.dev);
-  });
-
-  // Kick off on the first (active) pill
-  const firstDev = $('#deviceTabs .nav-link.active').data('dev');
-  if (firstDev) initElfinderFor(firstDev);
-
+  // Initialize elFinder against the given device ID
   function initElfinderFor(devId) {
-    // destroy previous instance
+    // Destroy any existing instance
     if (fmInstance) {
       try { fmInstance.destroy(); } catch (_) {}
       $('#fileExplorer').empty();
     }
 
     const opts = {
+      // connector endpoint
       url         : connectorUrl,
-      customData  : () => ({ dev: devId }),  // always send current device
+      // always include current device
+      customData  : { dev: devId },
       baseUrl     : baseUrl,
       cssAutoLoad : false,
       debug       : true,
 
+      // enable core commands
       commands    : [
         'open','reload','home','up','back','forward',
         'select','copy','cut','paste','rm',
@@ -60,4 +55,13 @@ $(function () {
       .elfinder(opts)
       .elfinder('instance');
   }
+
+  // When you switch tabs, re-init for the new device
+  $('#deviceTabs').on('shown.bs.tab', 'button[data-bs-toggle="pill"]', function () {
+    initElfinderFor(this.dataset.dev);
+  });
+
+  // Kick things off on the first (active) tab
+  const firstDev = $('#deviceTabs .nav-link.active').data('dev');
+  if (firstDev) initElfinderFor(firstDev);
 });
