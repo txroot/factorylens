@@ -24,10 +24,19 @@ $(function() {
     // We manually included CSS in the template
     cssAutoLoad: false,
     // Handlers for runtime events
-    handlers: {
-      load: function(event, fm) {
-        // On device switch, reload the file tree
-        $('#deviceSelect').on('change', function() {
+    debug      : true,
+    handlers   : {
+      init: function(e, fm) {
+        // log high-level init
+        console.log('elFinder init:', e, fm);
+      },
+      request: function(e, data) {
+        // logs every AJAX request and raw response text
+        console.log('elFinder request:', data.cmd, data);
+        console.log('Raw backend response:', data.xhr.responseText);
+      },
+      load: function(e, fm) {
+        $('#deviceSelect').off('change').on('change', function() {
           fm.options.customData.dev = this.value;
           fm.exec('reload');
         });
