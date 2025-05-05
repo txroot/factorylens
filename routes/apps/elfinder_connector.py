@@ -5,20 +5,13 @@ import base64
 import mimetypes
 import traceback
 from flask import Blueprint, request, jsonify, current_app
+from werkzeug.utils import secure_filename
 from models.device import Device
 
-elfinder_bp = Blueprint(
-    'elfinder_connector',
-    __name__,
-    url_prefix='/storage/connector'
-)
+elfinder_bp = Blueprint('elfinder_connector', __name__, url_prefix='/storage/connector')
 
 
 def _resolve_base_path(raw: str) -> str:
-    """
-    Convert a raw 'base_path' (absolute or relative) into an absolute folder
-    under STORAGE_ROOT (defaults to /app/storage).
-    """
     raw = raw.strip()
     if os.path.isabs(raw):
         return raw
@@ -27,9 +20,6 @@ def _resolve_base_path(raw: str) -> str:
 
 
 def _b64(s: str) -> str:
-    """
-    Base64‐encode a string, stripping any trailing '=' padding.
-    """
     return base64.b64encode(s.encode('utf-8')).decode('utf-8').rstrip('=')
 
 
@@ -38,41 +28,50 @@ def connector():
     try:
         cmd    = request.values.get('cmd')
         dev_id = request.values.get('dev')
-        target = request.values.get('target', '')
-        current_app.logger.debug(f"[elFinder] cmd={cmd} dev={dev_id} target={target}")
+        current_app.logger.debug(f"[elFinder] cmd={cmd} dev={dev_id}")
 
-        # Lookup device and resolve its base folder
+        # Lookup storage device
         dev = Device.query.get_or_404(dev_id)
         raw = (dev.parameters or {}).get('base_path', '')
         base = _resolve_base_path(raw)
         if not os.path.isdir(base):
             return jsonify(error=f'Invalid base path: {base}'), 400
 
-        # Only 'open' command implemented
+        volumeid = f"dev{dev_id}"
+
+        # ─── Helpers ─────────────────────────────────────────────────────────
+
+        def make_hash(rel_path: str) -> str:
+            """
+            Normalize root to '/', encode and prefix with volumeid.
+            """
+            # represent root as '/'
+            normalized = '/' if rel_path == '' else rel_path
+            enc = _b64(normalized)
+            return f"{volumeid}_{enc}"
+
+        def resolve_path(hash_str: str):
+            """
+            Decode elFinder hash back to (abs_path, rel_path).
+            """
+            if not hash_str:
+                rel = ''
+            else:
+                # strip prefix
+                part = hash_str.split('_', 1)[1] if '_' in hash_str else hash_str
+                decoded = base64.b64decode(part + '===').decode('utf-8')
+                rel = '' if decoded in ('', '/') else decoded.lstrip('/')
+            abs_path = os.path.normpath(os.path.join(base, rel))
+            if not abs_path.startswith(os.path.normpath(base)):
+                raise PermissionError("Access denied")
+            return abs_path, rel
+
+        # ─── OPEN ──────────────────────────────────────────────────────────────
         if cmd == 'open':
-            volumeid = f"dev{dev_id}"  # unique per device
-
-            # Decode the Base64‐encoded target into a relative path
-            rel = ''
-            if target:
-                # strip off the "<volumeid>_" prefix
-                _tmp = target.split('_', 1)[1] if '_' in target else target
-                rel = base64.b64decode(_tmp + '===').decode('utf-8')
-                # ── FIX: remove leading slash so join(base, rel) works
-                if rel.startswith('/'):
-                    rel = rel.lstrip('/')
-
-            abs_dir = os.path.normpath(os.path.join(base, rel))
-            # Prevent path traversal
-            if not abs_dir.startswith(os.path.normpath(base)):
-                return jsonify(error='Access denied'), 403
-
-            # Helper to build consistent hashes
-            def make_hash(path: str) -> str:
-                return f"{volumeid}_{_b64(path or '/')}"
+            target = request.values.get('target', '')
+            abs_dir, rel = resolve_path(target)
 
             cwd_hash = make_hash(rel)
-            # Build the root (cwd) entry
             cwd = {
                 'hash'     : cwd_hash,
                 'name'     : os.path.basename(abs_dir) or '/',
@@ -82,18 +81,24 @@ def connector():
                 'dirs'     : 1,
                 'volumeid' : volumeid,
                 'root'     : 1 if rel == '' else 0,
+                'read'     : 1,
+                'write'    : 1,
+                'locked'   : 0,
             }
+            # if not root, add parent hash
+            if rel:
+                parent_rel = os.path.dirname(rel)
+                cwd['phash'] = make_hash(parent_rel)
 
-            # List child entries
             files = [cwd]
             for name in sorted(os.listdir(abs_dir)):
                 if name.startswith('.'):
                     continue
                 full      = os.path.join(abs_dir, name)
                 rel_child = os.path.join(rel, name)
-                hash_child = make_hash(rel_child)
+                h = make_hash(rel_child)
                 files.append({
-                    'hash'     : hash_child,
+                    'hash'     : h,
                     'phash'    : cwd_hash,
                     'name'     : name,
                     'mime'     : 'directory' if os.path.isdir(full)
@@ -102,33 +107,101 @@ def connector():
                     'size'     : os.path.getsize(full) if os.path.isfile(full) else 0,
                     'dirs'     : 1 if os.path.isdir(full) else 0,
                     'volumeid' : volumeid,
+                    'read'     : 1,
+                    'write'    : 1,
+                    'locked'   : 0,
                 })
 
-            # Assemble the response
-            response = {
+            return jsonify({
                 'api'        : 2.1,
                 'cwd'        : cwd,
                 'files'      : files,
                 'options'    : {
-                    'path'   : rel,
-                    'url'    : '',
-                    'tmbUrl' : '',
+                    'path'          : rel,
+                    'url'           : '',
+                    'tmbUrl'        : '',
+                    'disabled'      : [],      # nothing globally disabled
+                    'uploadMaxSize' : '64M'
                 },
                 'netDrivers' : [],
-                'tree'       : [item for item in files if item['dirs'] > 0],
-            }
+                'tree'       : [f for f in files if f.get('dirs',0) > 0],
+            })
 
-            current_app.logger.debug(
-                f"[elFinder] open response: {len(files)-1} entries, "
-                f"{len(response['tree'])} tree nodes"
-            )
-            return jsonify(response)
+        # ─── MKDIR ─────────────────────────────────────────────────────────────
+        if cmd == 'mkdir':
+            cwd_hash = request.values.get('target','')
+            abs_dir, rel = resolve_path(cwd_hash)
+            names = request.values.getlist('name[]') or request.values.getlist('name')
+            added = []
+            for name in names:
+                nm = secure_filename(name)
+                path = os.path.join(abs_dir, nm)
+                os.makedirs(path, exist_ok=True)
+                rel_child = os.path.join(rel, nm)
+                h = make_hash(rel_child)
+                added.append({
+                    'hash'     : h,
+                    'phash'    : cwd_hash,
+                    'name'     : nm,
+                    'mime'     : 'directory',
+                    'ts'       : int(os.path.getmtime(path)),
+                    'size'     : 0,
+                    'dirs'     : 1,
+                    'volumeid' : volumeid,
+                    'read'     : 1,
+                    'write'    : 1,
+                    'locked'   : 0,
+                })
+            return jsonify(added=added)
 
-        # Unsupported commands
+        # ─── UPLOAD ───────────────────────────────────────────────────────────
+        if cmd == 'upload':
+            cwd_hash = request.values.get('target','')
+            abs_dir, rel = resolve_path(cwd_hash)
+            uploaded = request.files.getlist('upload[]') or request.files.getlist('files[]')
+            added = []
+            for f in uploaded:
+                filename = secure_filename(f.filename)
+                dest = os.path.join(abs_dir, filename)
+                f.save(dest)
+                rel_child = os.path.join(rel, filename)
+                h = make_hash(rel_child)
+                added.append({
+                    'hash'     : h,
+                    'phash'    : cwd_hash,
+                    'name'     : filename,
+                    'mime'     : mimetypes.guess_type(dest)[0] or 'application/octet-stream',
+                    'ts'       : int(os.path.getmtime(dest)),
+                    'size'     : os.path.getsize(dest),
+                    'dirs'     : 0,
+                    'volumeid' : volumeid,
+                    'read'     : 1,
+                    'write'    : 1,
+                    'locked'   : 0,
+                })
+            return jsonify(added=added)
+
+        # ─── REMOVE ───────────────────────────────────────────────────────────
+        if cmd == 'rm':
+            targets = request.values.getlist('targets[]') or request.values.getlist('targets')
+            removed = []
+            for h in targets:
+                try:
+                    abs_path, _ = resolve_path(h)
+                    if os.path.isdir(abs_path):
+                        os.rmdir(abs_path)
+                    else:
+                        os.remove(abs_path)
+                    removed.append(h)
+                except:
+                    pass
+            return jsonify(removed=removed, sync=[])
+
+        # unsupported command
         return jsonify(error=f"Unsupported command: {cmd}"), 400
 
+    except PermissionError as pe:
+        return jsonify(error=str(pe)), 403
     except Exception as e:
-        current_app.logger.error(
-            "elFinder connector exception:\n" + traceback.format_exc()
-        )
+        current_app.logger.error("elFinder connector exception:\n" + traceback.format_exc())
         return jsonify(error=str(e)), 500

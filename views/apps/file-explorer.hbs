@@ -1,11 +1,16 @@
+{# views/apps/file-explorer.hbs #}
 {% extends "layouts/dash.hbs" %}
 
 {% block head_styles %}
-  <!-- elFinder CSS (theme + core) -->
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='vendor/elfinder/css/elfinder.min.css') }}">
-  <link rel="stylesheet"
-        href="{{ url_for('static', filename='vendor/elfinder/css/theme.css') }}">
+  <!-- elFinder core styles -->
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='vendor/elfinder/css/elfinder.min.css') }}"
+  >
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='vendor/elfinder/css/theme.css') }}"
+  >
 {% endblock %}
 
 {% block content %}
@@ -20,9 +25,14 @@
 {% endblock %}
 
 {% block scripts %}
-  <!-- jQuery UI (must come before elFinder) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-  <!-- elFinder core -->
-  <script src="{{ url_for('static', filename='vendor/elfinder/js/elfinder.min.js') }}"></script>
+  <!-- jQuery UI (required by elFinder) -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"
+  ></script>
+  <!-- full build of elFinder (includes Quicklook) -->
+  <script
+    src="{{ url_for('static', filename='vendor/elfinder/js/elfinder.full.js') }}"
+  ></script>
+  <!-- our custom init -->
   <script src="{{ url_for('static', filename='js/apps/file-explorer.js') }}"></script>
 {% endblock %}

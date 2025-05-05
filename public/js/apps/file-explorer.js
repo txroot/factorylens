@@ -1,58 +1,50 @@
 // public/js/apps/file-explorer.js
-// Initialize elFinder with proper options and debug logging
-
 $(function() {
-  // URLs and paths
   const connectorUrl = '/storage/connector';
   const baseUrl      = '/assets/vendor/elfinder/';
-  
-  // Debug: log initial context
-  console.log('About to init elFinder…', {
-    connectorUrl: connectorUrl,
-    baseUrl: baseUrl,
-    selectedDevice: $('#deviceSelect').val()
-  });
 
   // Build elFinder options
   const options = {
-    // Backend connector URL
-    url        : connectorUrl,
-    // Pass selected device ID to connector
-    customData : { dev: $('#deviceSelect').val() },
-    // Location of elFinder's CSS, images, etc.
-    baseUrl    : baseUrl,
-    // We manually included CSS in the template
-    cssAutoLoad: false,
-    // Handlers for runtime events
-    debug      : true,
-    handlers   : {
+    url           : connectorUrl,
+    customData    : { dev: $('#deviceSelect').val() },
+    baseUrl       : baseUrl,
+    cssAutoLoad   : false,
+    debug         : true,
+    commands      : [
+      'open','reload','home','up','back','forward',
+      'mkdir','upload','download','quicklook'
+    ],
+    uiOptions: {
+      toolbar: [
+        ['mkdir','upload','download','quicklook'],
+        ['back','forward','up','reload']
+      ]
+    },
+    commandsOptions: {
+      quicklook: {
+        autoLoad        : true,
+        previewMimeRegex: /^(image|text)\//
+      }
+    },
+    handlers: {
       init: function(e, fm) {
-        // log high-level init
-        console.log('elFinder init:', e, fm);
+        // re-bind device selector on every init
+        $('#deviceSelect')
+          .off('change')
+          .on('change', function() {
+            fm.options.customData.dev = this.value;
+            fm.exec('reload');
+          });
       },
       request: function(e, data) {
-        // logs every AJAX request and raw response text
         console.log('elFinder request:', data.cmd, data);
-        console.log('Raw backend response:', data.xhr.responseText);
-      },
-      load: function(e, fm) {
-        $('#deviceSelect').off('change').on('change', function() {
-          fm.options.customData.dev = this.value;
-          fm.exec('reload');
-        });
+        console.log('Raw response:', data.xhr.responseText);
       }
     }
   };
 
-  // Debug: show the full options object
-  console.log('elFinder options:', options);
-
-  // Initialize elFinder
   try {
-    const fmInstance = $('#fileExplorer')
-      .elfinder(options)
-      .elfinder('instance');
-    console.log('elFinder initialized:', fmInstance);
+    $('#fileExplorer').elfinder(options);
   } catch (err) {
     console.error('elFinder init error:', err);
   }
