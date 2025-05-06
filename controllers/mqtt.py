@@ -24,42 +24,64 @@ def _on_connect(client, userdata, flags, rc, properties=None):
 
 def _on_message(client, userdata, msg):
     app = userdata
-    try:
-        topic = msg.topic
-        payload = msg.payload.decode()
-        parts = topic.split("/")
-        if len(parts) < 3:
-            return
+    with app.app_context():  # <- this is the fix
+        try:
+            topic = msg.topic
+            payload = msg.payload.decode()
 
-        dev_id = parts[1]      # e.g. "switch-0081F2"
-        group  = parts[2]      # e.g. "relay", "input", "temperature", etc.
+            print(f"[MQTT] Received message -> Topic: {topic} | Payload: {payload}")
 
-        dev = Device.query.filter_by(mqtt_client_id=dev_id).first()
-        if not dev:
-            return
+            parts = topic.split("/")
+            if len(parts) < 3:
+                print(f"[MQTT] Ignored: topic has insufficient parts -> {parts}")
+                return
 
-        values = dev.values or {}
-        if group == "relay" and len(parts) >= 5:
-            ch, prop = parts[3], parts[4]
-            values.setdefault("relay", {}) \
-                  .setdefault(ch, {})[prop] = payload
+            dev_id = parts[1]
+            group = parts[2]
 
-        elif group == "input" and len(parts) >= 4:
-            idx = parts[3]
-            values.setdefault("input", {})[idx] = int(payload)
+            print(f"[MQTT] Parsed -> Device ID: {dev_id} | Group: {group}")
 
-        elif group in ("temperature", "temperature_f", "voltage"):
-            values[group] = float(payload)
+            dev = Device.query.filter_by(mqtt_client_id=dev_id).first()
+            if not dev:
+                print(f"[MQTT] Warning: Device not found in DB for ID '{dev_id}'")
+                return
 
-        dev.values = values
-        dev.status = "online"
-        dev.last_seen = datetime.utcnow()
-        db.session.commit()
+            values = dev.values or {}
+            print(f"[MQTT] Current stored values for {dev_id}: {values}")
 
-    except Exception as e:
-        app.logger.error("MQTT msg-handler error: %s", e)
+            if group == "relay" and len(parts) >= 5:
+                ch, prop = parts[3], parts[4]
+                print(f"[MQTT] Relay update -> Channel: {ch} | Prop: {prop} | Value: {payload}")
+                values.setdefault("relay", {}).setdefault(ch, {})[prop] = payload
 
+            elif group == "input" and len(parts) >= 4:
+                idx = parts[3]
+                print(f"[MQTT] Input update -> Index: {idx} | Value: {payload}")
+                try:
+                    values.setdefault("input", {})[idx] = int(payload)
+                except ValueError:
+                    print(f"[MQTT] Input payload is not an int: '{payload}'")
 
+            elif group in ("temperature", "temperature_f", "voltage"):
+                print(f"[MQTT] Sensor update -> {group}: {payload}")
+                try:
+                    values[group] = float(payload)
+                except ValueError:
+                    print(f"[MQTT] Sensor payload is not a float: '{payload}'")
+
+            else:
+                print(f"[MQTT] Unhandled group '{group}' or unexpected topic format")
+
+            dev.values = values
+            dev.status = "online"
+            dev.last_seen = datetime.utcnow()
+            db.session.commit()
+
+            print(f"[MQTT] Successfully updated device '{dev_id}'")
+
+        except Exception as e:
+            app.logger.error("MQTT msg-handler error: %s", e)
+            print(f"[MQTT] ERROR during message handling: {e}")
 def init_mqtt(app):
     """
     Should be called once from create_app().

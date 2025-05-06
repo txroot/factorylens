@@ -1,3 +1,5 @@
+# controllers/apps/device_control.py
+
 """
 Helper functions used by the blueprint + front‑end JS
 """
@@ -27,3 +29,4 @@ def publish_relay(device: Device, channel: int, turn_on: bool):
     topic = f"shellies/{device.mqtt_client_id}/relay/{channel}/command"
     payload = "on" if turn_on else "off"
     current_app.mqtt.publish(topic, payload, qos=1, retain=False)
+
