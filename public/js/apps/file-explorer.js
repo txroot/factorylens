@@ -7,23 +7,26 @@ $(function () {
 
   // Initialize elFinder against the given device ID
   function initElfinderFor(devId) {
-    // Destroy any existing instance
+    // Destroy any existing instance and unbind its events
     if (fmInstance) {
       try { fmInstance.destroy(); } catch (_) {}
-      $('#fileExplorer').empty();
+      fmInstance = null;
+      $('#fileExplorer').off().empty();
     }
 
     const opts = {
       // connector endpoint
-      url         : connectorUrl,
+      url          : connectorUrl,
+      // force POST so customData (dev) is sent on every request
+      requestType  : 'post',
       // always include current device
-      customData  : { dev: devId },
-      baseUrl     : baseUrl,
-      cssAutoLoad : false,
-      debug       : true,
+      customData   : { dev: devId },
+      baseUrl      : baseUrl,
+      cssAutoLoad  : false,
+      debug        : true,
 
       // enable core commands
-      commands    : [
+      commands     : [
         'open','reload','home','up','back','forward',
         'select','copy','cut','paste','rm',
         'mkdir','upload','download','quicklook'
