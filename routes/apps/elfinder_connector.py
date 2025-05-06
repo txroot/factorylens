@@ -379,17 +379,42 @@ def connector():
         if cmd == 'file':
             abs_p, _ = resolve_path(target)
             mimetype = mimetypes.guess_type(abs_p)[0] or 'application/octet-stream'
-            return send_file(abs_p, mimetype=mimetype)
+            if is_sftp:
+                # fetch remote file into memory
+                import io
+                buf = io.BytesIO()
+                sftp.getfo(abs_p, buf)
+                buf.seek(0)
+                # close SSH/SFTP before responding
+                sftp.close()
+                ssh.close()
+                return send_file(buf, mimetype=mimetype)
+            else:
+                return send_file(abs_p, mimetype=mimetype)
 
         # ─── DOWNLOAD (attachment) ─────────────────────────────────
         if cmd == 'download':
             abs_p, _ = resolve_path(target)
-            return send_file(
-                abs_p,
-                mimetype='application/octet-stream',
-                as_attachment=True,
-                download_name=os.path.basename(abs_p)
-            )
+            if is_sftp:
+                import io
+                buf = io.BytesIO()
+                sftp.getfo(abs_p, buf)
+                buf.seek(0)
+                sftp.close()
+                ssh.close()
+                return send_file(
+                    buf,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=os.path.basename(abs_p)
+                )
+            else:
+                return send_file(
+                    abs_p,
+                    mimetype='application/octet-stream',
+                    as_attachment=True,
+                    download_name=os.path.basename(abs_p)
+                )
 
         # ─── Unsupported command ────────────────────────────────────
         return jsonify(error=f"Unsupported command: {cmd}"), 400

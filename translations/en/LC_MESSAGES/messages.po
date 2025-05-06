@@ -367,3 +367,42 @@ msgstr "Outputs"
 
 msgid "Sensors"
 msgstr "Sensors"
+
+msgid "No cameras found"
+msgstr "No cameras found"
+
+msgid "You haven't added any cameras yet. Go to"
+msgstr "You haven't added any cameras yet. Go to"
+
+msgid "to add or enable a camera."
+msgstr "to add or enable a camera."
+
+msgid "Choose stream"
+msgstr "Choose stream"
+
+msgid "No streams configured"
+msgstr "No streams configured"
+
+msgid "Snapshot options"
+msgstr "Snapshot options"
+
+msgid "Direct URL"
+msgstr "Direct URL"
+
+msgid "No snapshot options"
+msgstr "No snapshot options"
+
+msgid "Stream URL"
+msgstr "Stream URL"
+
+msgid "Toggle streams"
+msgstr "Toggle streams"
+
+msgid "Toggle snapshot options"
+msgstr "Toggle snapshot options"
+
+msgid "Copy URL"
+msgstr "Copy URL"
+
+msgid "Hide URL"
+msgstr "Hide URL"
