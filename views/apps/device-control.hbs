@@ -1,4 +1,4 @@
-{!-- templates/apps/device-control.hbs --}
+
 {% extends "layouts/dash.hbs" %}
 
 {% block head %}
@@ -12,128 +12,135 @@
 <section class="container-fluid">
   <h2 class="mt-4 mb-3">{{ gettext("device_control_title") }}</h2>
 
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
-    {% for dev in devices %}
-    <div class="col">
-      <div class="card h-100 shadow-sm" data-dev-id="{{ dev.id }}">
-        <!-- Header -->
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <div class="d-flex align-items-center">
-            <i class="ti ti-device-laptop fs-5 me-2"></i>
-            <h6 class="mb-0">{{ dev.name }}</h6>
+  {% if devices|length == 0 %}
+    <!-- Empty-state when no devices are available -->
+    <div class="d-flex flex-column align-items-center justify-content-center" style="height:500px">
+      <img
+        src="{{ url_for('static', filename='img/devices/undraw_choice.svg') }}"
+        alt="{{ _('No devices') }}"
+        class="mb-4"
+        style="max-width:280px"
+      />
+      <h4 class="text-secondary mb-2">{{ _("No devices found") }}</h4>
+      <p class="text-muted text-center" style="max-width:420px">
+        {{ _("You haven't added any devices yet. Go to") }}
+        <a href="{{ url_for('settings.devices_page') }}">{{ _("Device Manager") }}</a>
+        {{ _("to add or enable a device.") }}
+      </p>
+    </div>
+  {% else %}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+      {% for dev in devices %}
+      <div class="col">
+        <div class="card h-100 shadow-sm" data-dev-id="{{ dev.id }}">
+          <!-- Header -->
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+              <i class="ti ti-device-laptop fs-5 me-2"></i>
+              <h6 class="mb-0">{{ dev.name }}</h6>
+            </div>
+            <div class="d-flex align-items-center">
+              <!-- status dot + text -->
+              <i id="status-dot-{{ dev.id }}" class="ti ti-circle-fill text-secondary"></i>
+              <small id="status-text-{{ dev.id }}" class="ms-1 text-secondary">—</small>
+
+              <!-- wifi signal -->
+              <i class="ti ti-wifi fs-6 ms-3"></i>
+              <small id="rssi-{{ dev.id }}" class="ms-1 text-muted">— dBm</small>
+            </div>
           </div>
-          <div class="d-flex align-items-center">
-            <!-- status dot + text -->
-            <i id="status-dot-{{dev.id}}" class="ti ti-circle-fill text-secondary"></i>
-            <small id="status-text-{{dev.id}}" class="ms-1 text-secondary">—</small>
 
-            <!-- wifi signal -->
-            <i class="ti ti-wifi fs-6 ms-3"></i>
-            <small id="rssi-{{dev.id}}" class="ms-1 text-muted">— dBm</small>
-          </div>
-        </div>
-
-        <!-- Body -->
-        <div class="card-body d-flex flex-column pb-1">
-
-
-
-          <!-- ONLINE CONTENT -->
-          <div class="body-content">
-            <!-- I/O panel -->
-            <div class="d-flex mb-5 align-items-start">
-              <!-- Inputs column -->
-              <div class="flex-fill text-center">
-                <h6 class="small mb-2">
-                  <i class="ti ti-circuit-switch-open fs-5 me-1 text-primary mb-3"></i> Inputs
-                </h6>
-                <div class="d-flex justify-content-around">
-                  {% for idx in [0,1] %}
-                  <div>
-                    <span
-                      id="input-badge-{{dev.id}}-{{idx}}"
-                      class="badge rounded-pill px-3 bg-secondary text-white"
-                      style="min-width:3rem;"
-                    >
-                      I{{ idx }}
-                    </span>
+          <!-- Body -->
+          <div class="card-body d-flex flex-column pb-1">
+            <!-- ONLINE CONTENT -->
+            <div class="body-content">
+              <!-- I/O panel -->
+              <div class="d-flex mb-5 align-items-start">
+                <!-- Inputs column -->
+                <div class="flex-fill text-center">
+                  <h6 class="small mb-2">
+                    <i class="ti ti-circuit-switch-open fs-5 me-1 text-primary mb-3"></i> Inputs
+                  </h6>
+                  <div class="d-flex justify-content-around">
+                    {% for idx in [0,1] %}
+                    <div>
+                      <span
+                        id="input-badge-{{ dev.id }}-{{ idx }}"
+                        class="badge rounded-pill px-3 bg-secondary text-white"
+                        style="min-width:3rem;"
+                      >
+                        I{{ idx }}
+                      </span>
+                    </div>
+                    {% endfor %}
                   </div>
-                  {% endfor %}
+                </div>
+
+                <div class="vr mx-3"></div>
+
+                <!-- Outputs column -->
+                <div class="flex-fill text-center">
+                  <h6 class="small mb-2">
+                    <i class="ti ti-power fs-5 me-1 text-primary mb-3"></i> Outputs
+                  </h6>
+                  <div class="d-flex justify-content-around">
+                    {% for ch in [0,1] %}
+                    <div class="form-check form-switch">
+                      <input class="form-check-input relay-toggle"
+                             type="checkbox"
+                             id="relay-{{ dev.id }}-{{ ch }}"
+                             data-channel="{{ ch }}">
+                      <label class="form-check-label" for="relay-{{ dev.id }}-{{ ch }}">
+                        R{{ ch }}
+                      </label>
+                    </div>
+                    {% endfor %}
+                  </div>
                 </div>
               </div>
 
-              <div class="vr mx-3"></div>
-
-              <!-- Outputs column -->
-              <div class="flex-fill text-center">
+              <!-- Centered text "Sensors" -->
+              <div class="text-center mb-3">
                 <h6 class="small mb-2">
-                  <i class="ti ti-power fs-5 me-1 text-primary mb-3"></i> Outputs
+                  <i class="ti ti-sensors fs-5 me-1 text-primary"></i> Sensors
                 </h6>
-                <div class="d-flex justify-content-around">
-                  {% for ch in [0,1] %}
-                  <div class="form-check form-switch">
-                    <input class="form-check-input relay-toggle"
-                           type="checkbox"
-                           id="relay-{{dev.id}}-{{ch}}"
-                           data-channel="{{ch}}">
-                    <label class="form-check-label" for="relay-{{dev.id}}-{{ch}}">
-                      R{{ ch }}
-                    </label>
-                  </div>
-                  {% endfor %}
+              </div>
+
+              <!-- Sensors: temp  wattage  voltage -->
+              <div class="mt-auto d-flex justify-content-around small text-muted bg-light">
+                <!-- Celsius -->
+                <div>
+                  <i class="ti ti-temperature-celsius fs-6 me-1"></i>
+                  <span id="temp-{{ dev.id }}">—°C</span>
+                </div>
+                <!-- instantaneous power -->
+                <div>
+                  <i class="ti ti-plug fs-6 me-1"></i>
+                  <span id="power-{{ dev.id }}">— W</span>
+                </div>
+                <!-- cumulative energy -->
+                <div>
+                  <i class="ti ti-clock fs-6 me-1"></i>
+                  <span id="energy-{{ dev.id }}">— kWh</span>
+                </div>
+                <!-- voltage -->
+                <div>
+                  <i class="ti ti-battery fs-6 me-1"></i>
+                  <span id="voltage-{{ dev.id }}">— V</span>
                 </div>
               </div>
             </div>
 
-            <!-- Centered text "Sensors" -->
-            <div class="text-center mb-3">
-              <h6 class="small mb-2">
-                <i class="ti ti-sensors fs-5 me-1 text-primary"></i> Sensors
-              </h6>
+            <!-- OFFLINE PLACEHOLDER -->
+            <div class="body-offline d-none h-100 d-flex justify-content-center align-items-center">
+              <i class="ti ti-wifi-off display-1 text-muted"></i>
             </div>
-
-            <!-- Sensors: temp  wattage  voltage -->
-            <div class="mt-auto d-flex justify-content-around small text-muted bg-light">
-              <!-- Celsius -->
-              <div>
-                <i class="ti ti-temperature-celsius fs-6 me-1"></i>
-                <span id="temp-{{dev.id}}">—°C</span>
-              </div>
-              <!-- Fahrenheit 
-              <div>
-                <i class="ti ti-temperature-fahrenheit fs-6 me-1"></i>
-                <span id="temp-f-{{dev.id}}">—°F</span>
-              </div>
-              -->
-              <!-- instantaneous power -->
-              <div>
-                <i class="ti ti-plug fs-6 me-1"></i>
-                <span id="power-{{dev.id}}">— W</span>
-              </div>
-              <!-- cumulative energy -->
-              <div>
-                <i class="ti ti-clock fs-6 me-1"></i>
-                <span id="energy-{{dev.id}}">— kWh</span>
-              </div>
-              <!-- voltage -->
-              <div>
-                <i class="ti ti-battery fs-6 me-1"></i>
-                <span id="voltage-{{dev.id}}">— V</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- OFFLINE PLACEHOLDER -->
-          <div class="body-offline d-none h-100 d-flex justify-content-center align-items-center">
-            <i
-              class="ti ti-wifi-off display-1 text-muted"
-            ></i>
           </div>
         </div>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
-  </div>
+  {% endif %}
 </section>
 {% endblock %}
 

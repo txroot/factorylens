@@ -355,3 +355,21 @@ msgstr "Informativo"
 
 msgid "device_control_title"
 msgstr "Controlo de Dispositivos"
+
+msgid "No devices found"
+msgstr "Nenhum dispositivo encontrado"
+
+msgid "You haven't added any devices yet. Go to"
+msgstr "Ainda não adicionou nenhum dispositivo. Vá para"
+
+msgid "to add or enable a device."
+msgstr "para adicionar ou ativar um dispositivo."
+
+msgid "Inputs"
+msgstr "Entradas"
+
+msgid "Outputs"
+msgstr "Saídas"
+
+msgid "Sensors"
+msgstr "Sensores"

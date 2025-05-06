@@ -349,3 +349,21 @@ msgstr "Info"
 
 msgid "device_control_title"
 msgstr "Device Control"
+
+msgid "No devices found"
+msgstr "No devices found"
+
+msgid "You haven't added any devices yet. Go to"
+msgstr "You haven't added any devices yet. Go to"
+
+msgid "to add or enable a device."
+msgstr "to add or enable a device."
+
+msgid "Inputs"
+msgstr "Inputs"
+
+msgid "Outputs"
+msgstr "Outputs"
+
+msgid "Sensors"
+msgstr "Sensors"
