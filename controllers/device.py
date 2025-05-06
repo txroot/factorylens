@@ -56,6 +56,9 @@ def create_device():
     if not all(data.get(k) for k in required):
         abort(400, "Missing required fields")
 
+    if "serial_number" in data:
+        data["serial_number"] = data["serial_number"] or None
+
     # 1) Create Device
     dev = Device(
         name=data["name"],
@@ -79,6 +82,9 @@ def create_device():
     model = DeviceModel.query.get(dev.device_model_id)
     if model and model.category.name.lower() == "camera":
         params = data.get("parameters", {})
+
+        if "serial_number" in cam:
+            cam["serial_number"] = cam["serial_number"] or None
 
         # 2a) Camera record
         cam = Camera(
@@ -145,6 +151,9 @@ def update_device(dev_id):
     dev = Device.query.get_or_404(dev_id)
     data = request.json or {}
 
+    if "serial_number" in data:
+        data["serial_number"] = data["serial_number"] or None
+
     # 1) Update the generic Device fields
     for f in (
         "name",
@@ -177,9 +186,12 @@ def update_device(dev_id):
             cam = Camera(device_id=dev.id)
             db.session.add(cam)
 
+        if "serial_number" in cam:
+            cam["serial_number"] = cam["serial_number"] or None
+
         # update camera fields
         cam.name = dev.name
-        cam.serial_number = dev.serial_number
+        cam.serial_number = params.get("serial_number", cam.serial_number)
         cam.address = params.get("address", cam.address)
         cam.port = params.get("port", cam.port)
         cam.username = params.get("username", cam.username)
@@ -287,11 +299,40 @@ Shelly 2.5 MQTT Schema
         "0": 0,
         "1": 0
       },
-      "temperature": 44.20,
-      "temperature_f": 111.55,
+      "input_event": {
+        "0": {
+          "event": "",
+          "event_cnt": 0
+        },
+        "1": {
+          "event": "",
+          "event_cnt": 0
+        }
+      },
+      "temperature": 44.58,
+      "temperature_f": 112.24,
       "overtemperature": 0,
       "temperature_status": "Normal",
-      "voltage": {}
+      "voltage": 0.14,
+      "online": true,
+      "announce": {
+        "id": "switch-0081F2",
+        "model": "SHSW-25",
+        "mac": "2462AB0081F2",
+        "ip": "10.20.1.99",
+        "new_fw": false,
+        "fw_ver": "20230913-112234/v1.14.0-gcb84623",
+        "mode": "relay"
+      },
+      "info": {
+        "wifi_sta": {
+          "connected": true,
+          "ssid": "microlumin-wifi",
+          "ip": "10.20.1.99",
+          "rssi": -68
+        },
+        "cloud": null
+      }
     }
   }
 }

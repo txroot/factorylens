@@ -129,7 +129,8 @@ def create_app():
 
     # ---------- MQTT worker ----------
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        init_mqtt(app)
+        with app.app_context():
+            init_mqtt(app)
 
     return app
 

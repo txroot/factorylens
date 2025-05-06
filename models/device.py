@@ -11,7 +11,7 @@ class Device(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
 
     # (Optional) Serial number or hardware ID
-    serial_number = db.Column(db.String(100), unique=True)
+    serial_number = db.Column(db.String(100), nullable=True)
 
     # Device FK -> concrete model
     device_model_id = db.Column(db.Integer,
@@ -49,7 +49,7 @@ class Device(db.Model):
     # MQTT specifics
     mqtt_client_id = db.Column(db.String(100), nullable=False, unique=True)
     topic_prefix = db.Column(db.String(200), nullable=False,
-                             comment="Root topic, e.g. 'shelly/1ABC23'")
+                             comment="Root topic, e.g. 'shellies'")
 
     # General control and metadata
     parameters = db.Column(db.JSON, comment="Arbitrary JSON blob for extra settings")

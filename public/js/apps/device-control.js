@@ -35,7 +35,22 @@
   
           // === Wattage ===
           const pEl = document.getElementById(`power-${id}`);
-          if (pEl) pEl.textContent = `${st.relay?.["0"]?.power ?? "—"} W`;
+          if (pEl) {
+            let raw = st.relay?.["0"]?.power;
+            let watts = "—";
+
+            if (typeof raw === "number" || typeof raw === "string") {
+              // if it’s already a primitive (string or number), just use it
+              watts = raw;
+            }
+            else if (raw && typeof raw === "object") {
+              // pick the first numeric property you find
+              const nums = Object.values(raw).filter(v => typeof v === "number" || !isNaN(parseFloat(v)));
+              if (nums.length) watts = nums[0];
+            }
+
+            pEl.textContent = `${watts} W`;
+          }
   
         } catch (e) {
           console.warn("State refresh failed", e);
