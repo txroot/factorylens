@@ -34,11 +34,14 @@
         </div>
 
         <!-- Body -->
-        <div class="card-body d-flex flex-column">
+        <div class="card-body d-flex flex-column pb-1">
+
+
+
           <!-- ONLINE CONTENT -->
           <div class="body-content">
             <!-- I/O panel -->
-            <div class="d-flex mb-3 align-items-start">
+            <div class="d-flex mb-5 align-items-start">
               <!-- Inputs column -->
               <div class="flex-fill text-center">
                 <h6 class="small mb-2">
@@ -46,17 +49,14 @@
                 </h6>
                 <div class="d-flex justify-content-around">
                   {% for idx in [0,1] %}
-                  <div class="form-check">
-                    <input
-                      class="form-check-input input-radio"
-                      type="radio"
-                      name="input-{{dev.id}}"
-                      id="input-{{dev.id}}-{{idx}}"
-                      disabled>
-                    <label class="form-check-label" for="input-{{dev.id}}-{{idx}}">
+                  <div>
+                    <span
+                      id="input-badge-{{dev.id}}-{{idx}}"
+                      class="badge rounded-pill px-3 bg-secondary text-white"
+                      style="min-width:3rem;"
+                    >
                       I{{ idx }}
-                      <small id="input-evt-{{dev.id}}-{{idx}}" class="text-muted ms-1">(0)</small>
-                    </label>
+                    </span>
                   </div>
                   {% endfor %}
                 </div>
@@ -85,8 +85,15 @@
               </div>
             </div>
 
+            <!-- Centered text "Sensors" -->
+            <div class="text-center mb-3">
+              <h6 class="small mb-2">
+                <i class="ti ti-sensors fs-5 me-1 text-primary"></i> Sensors
+              </h6>
+            </div>
+
             <!-- Sensors: temp  wattage  voltage -->
-            <div class="mt-5 d-flex justify-content-around small text-muted bg-light">
+            <div class="mt-auto d-flex justify-content-around small text-muted bg-light">
               <!-- Celsius -->
               <div>
                 <i class="ti ti-temperature-celsius fs-6 me-1"></i>
@@ -116,11 +123,10 @@
             </div>
           </div>
 
-            <!-- OFFLINE PLACEHOLDER -->
+          <!-- OFFLINE PLACEHOLDER -->
           <div class="body-offline d-none h-100 d-flex justify-content-center align-items-center">
             <i
-              class="ti ti-wifi-off text-muted"
-              style="font-size:5rem; line-height:1;"
+              class="ti ti-wifi-off display-1 text-muted"
             ></i>
           </div>
         </div>

@@ -1,4 +1,3 @@
-// static/js/apps/device-control.js
 /* global fetch */
 document.addEventListener("DOMContentLoaded", () => {
   const cards = Array.from(document.querySelectorAll("[data-dev-id]"));
@@ -8,14 +7,19 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const st = await (await fetch(`/apps/device-control/state/${id}`)).json();
 
-      // ── INPUTS + EVENT COUNT ──────────────────────────────────────
-      card.querySelectorAll(".input-radio").forEach(radio => {
-        const idx = radio.id.split("-").pop();
-        radio.checked = Boolean(st.input?.[idx]);
-        const cnt = st.input_event?.[idx]?.event_cnt ?? 0;
-        const evtLabel = card.querySelector(`#input-evt-${id}-${idx}`);
-        if (evtLabel) evtLabel.textContent = `(${cnt})`;
-      });
+      console.log("State for", id, st);
+
+      // ── INPUT BADGES ─────────────────────────────────────────────
+      for (let idx of [0,1]) {
+        const isOn = Boolean(st.input?.[idx]);
+        const badge = card.querySelector(`#input-badge-${id}-${idx}`);
+        if (!badge) continue;
+
+        badge.classList.toggle("bg-primary", isOn);
+        badge.classList.toggle("bg-light", !isOn);
+        badge.classList.toggle("text-white", isOn);
+        badge.classList.toggle("text-muted", !isOn);
+      }
 
       // ── RELAYS ────────────────────────────────────────────────────
       card.querySelectorAll(".relay-toggle").forEach(sw => {
@@ -27,11 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const tC = st.temperature, tF = st.temperature_f;
       card.querySelector(`#temp-${id}`).textContent =
         tC != null ? `${tC}°C` : "—°C";
-      card.querySelector(`#temp-f-${id}`).textContent =
-        tF != null ? `${tF}°F` : "—°F";
+
+      const tempFEl = card.querySelector(`#temp-f-${id}`);
+      if (tempFEl) {
+        tempFEl.textContent = tF != null ? `${tF}°F` : "—°F";
+      }
 
       // ── POWER & ENERGY ───────────────────────────────────────────
-      const p = st.relay?.["0"]?.power?.power ?? null;
+      const p = st.relay?.["0"]?.power?.power ?? st.relay?.["0"]?.power ?? null;
       card.querySelector(`#power-${id}`).textContent =
         p != null ? `${p} W` : "— W";
       const e = st.relay?.["0"]?.energy;
@@ -45,34 +52,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // ── RSSI ──────────────────────────────────────────────────────
       const rssiEl = card.querySelector(`#rssi-${id}`);
-      const r = st.info?.wifi_sta?.rssi;
-      if (rssiEl) rssiEl.textContent = r != null ? `${r} dBm` : "— dBm";
+      const rssi   = st.info?.wifi_sta?.rssi;
 
       // ── ONLINE / OFFLINE ─────────────────────────────────────────
-      const online = Boolean(st.online);
-      const dot = card.querySelector(`#status-dot-${id}`);
-      const txt = card.querySelector(`#status-text-${id}`);
-      const live = card.querySelector(".body-content");
-      const offp = card.querySelector(".body-offline");
+      const online = st.online === true || st.online === "true";
+      const dot    = card.querySelector(`#status-dot-${id}`);
+      const txt    = card.querySelector(`#status-text-${id}`);
+      const live   = card.querySelector(".body-content");
+      const offp   = card.querySelector(".body-offline");
 
       if (dot && txt) {
-        dot.classList.toggle("text-success",  online);
-        dot.classList.toggle("text-secondary", !online);
-        txt.textContent = online ? "online" : "offline";
-        txt.classList.toggle("text-success",  online);
-        txt.classList.toggle("text-danger", !online);
+        dot.classList.remove("text-success", "text-danger", "text-secondary");
+        txt.classList.remove("text-success", "text-danger", "text-secondary");
+
+        if (online) {
+          dot.classList.add("text-success");
+          txt.classList.add("text-success");
+          txt.textContent = "online";
+        } else {
+          dot.classList.add("text-danger");
+          txt.classList.add("text-danger");
+          txt.textContent = "offline";
+        }
       }
 
-      // swap live vs offline view
+      // swap views + clear RSSI when offline
       if (live && offp) {
         if (online) {
           live.classList.remove("d-none");
           offp.classList.add("d-none");
+          if (rssiEl) rssiEl.textContent = rssi != null ? `${rssi} dBm` : "— dBm";
         } else {
           live.classList.add("d-none");
           offp.classList.remove("d-none");
+          if (rssiEl) rssiEl.textContent = "— dBm";
         }
       }
+
     } catch (err) {
       console.warn("refresh failed", err);
     }
@@ -80,9 +96,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // initial + periodic refresh
   cards.forEach(refresh);
-  setInterval(() => cards.forEach(refresh), 3000);
+  setInterval(() => cards.forEach(refresh), 333);
 
-  // relay toggle handler
+  // toggle relay handler
   document.body.addEventListener("change", e => {
     if (!e.target.matches(".relay-toggle")) return;
     const sw   = e.target;
