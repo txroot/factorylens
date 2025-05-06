@@ -2,10 +2,13 @@
 document.addEventListener("DOMContentLoaded", () => {
   const cards = Array.from(document.querySelectorAll("[data-dev-id]"));
 
+  // ── Pull in state for one card and update its UI ──────────────────
   async function refresh(card) {
     const id = card.dataset.devId;
     try {
-      const st = await (await fetch(`/apps/device-control/state/${id}`)).json();
+      const res = await fetch(`/apps/device-control/state/${id}`);
+      if (!res.ok) throw new Error(res.statusText);
+      const st = await res.json();
 
       console.log("State for", id, st);
 
@@ -14,11 +17,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const isOn = Boolean(st.input?.[idx]);
         const badge = card.querySelector(`#input-badge-${id}-${idx}`);
         if (!badge) continue;
-
         badge.classList.toggle("bg-primary", isOn);
-        badge.classList.toggle("bg-light", !isOn);
-        badge.classList.toggle("text-white", isOn);
-        badge.classList.toggle("text-muted", !isOn);
+        badge.classList.toggle("bg-light",   !isOn);
+        badge.classList.toggle("text-white",  isOn);
+        badge.classList.toggle("text-muted",  !isOn);
       }
 
       // ── RELAYS ────────────────────────────────────────────────────
@@ -27,18 +29,19 @@ document.addEventListener("DOMContentLoaded", () => {
         sw.checked = st.relay?.[ch]?.state === "on";
       });
 
-      // ── TEMPERATURES ─────────────────────────────────────────────
+      // ── TEMPERATURE ───────────────────────────────────────────────
       const tC = st.temperature, tF = st.temperature_f;
       card.querySelector(`#temp-${id}`).textContent =
         tC != null ? `${tC}°C` : "—°C";
-
       const tempFEl = card.querySelector(`#temp-f-${id}`);
       if (tempFEl) {
         tempFEl.textContent = tF != null ? `${tF}°F` : "—°F";
       }
 
-      // ── POWER & ENERGY ───────────────────────────────────────────
-      const p = st.relay?.["0"]?.power?.power ?? st.relay?.["0"]?.power ?? null;
+      // ── POWER & ENERGY ────────────────────────────────────────────
+      const p = st.relay?.["0"]?.power?.power
+              ?? st.relay?.["0"]?.power
+              ?? null;
       card.querySelector(`#power-${id}`).textContent =
         p != null ? `${p} W` : "— W";
       const e = st.relay?.["0"]?.energy;
@@ -64,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (dot && txt) {
         dot.classList.remove("text-success", "text-danger", "text-secondary");
         txt.classList.remove("text-success", "text-danger", "text-secondary");
-
         if (online) {
           dot.classList.add("text-success");
           txt.classList.add("text-success");
@@ -81,7 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (online) {
           live.classList.remove("d-none");
           offp.classList.add("d-none");
-          if (rssiEl) rssiEl.textContent = rssi != null ? `${rssi} dBm` : "— dBm";
+          if (rssiEl)
+            rssiEl.textContent = rssi != null ? `${rssi} dBm` : "— dBm";
         } else {
           live.classList.add("d-none");
           offp.classList.remove("d-none");
@@ -94,19 +97,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // initial + periodic refresh
-  cards.forEach(refresh);
-  setInterval(() => cards.forEach(refresh), 333);
+  // ── Fire all initial refreshes in parallel, then start interval ───
+  async function initialAndPoll() {
+    await Promise.all(cards.map(refresh));
+    setInterval(() => cards.forEach(refresh), 333);
+  }
+  initialAndPoll();
 
-  // toggle relay handler
+  // ── Relay toggle handler ────────────────────────────────────────
   document.body.addEventListener("change", e => {
     if (!e.target.matches(".relay-toggle")) return;
     const sw   = e.target;
     const card = sw.closest("[data-dev-id]");
-    fetch(`/apps/device-control/relay/${card.dataset.devId}/${sw.dataset.channel}`, {
-      method:  "POST",
-      headers: {"Content-Type":"application/json"},
-      body:    JSON.stringify({ on: sw.checked })
-    }).catch(console.error);
+    fetch(
+      `/apps/device-control/relay/${card.dataset.devId}/${sw.dataset.channel}`,
+      {
+        method:  "POST",
+        headers: {"Content-Type":"application/json"},
+        body:    JSON.stringify({ on: sw.checked })
+      }
+    ).catch(console.error);
   });
 });

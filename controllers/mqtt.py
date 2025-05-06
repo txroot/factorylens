@@ -5,6 +5,7 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 from extensions import db
 from models.device import Device
+import math
 
 _MQTT_HOST  = os.getenv("MQTT_HOST", "localhost")
 _MQTT_PORT  = int(os.getenv("MQTT_PORT", 1883))
@@ -70,8 +71,10 @@ def _on_message(client, app, msg):
         # ── SIMPLE SENSORS ─────────────────────────────────────────────
         elif group in ("temperature", "temperature_f", "voltage"):
             try:
-                values[group] = float(payload)
-                app.logger.debug("MQTT: Sensor %s → %s", group, payload)
+                val = float(payload)
+                truncated_val = math.trunc(val * 100) / 100  # Truncate to 2 decimal places
+                values[group] = truncated_val
+                app.logger.debug("MQTT: Sensor %s → %.2f", group, truncated_val)
                 handled = True
             except ValueError:
                 app.logger.error("MQTT: Invalid %s payload %r", group, payload)
