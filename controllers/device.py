@@ -83,9 +83,6 @@ def create_device():
     if model and model.category.name.lower() == "camera":
         params = data.get("parameters", {})
 
-        if "serial_number" in cam:
-            cam["serial_number"] = cam["serial_number"] or None
-
         # 2a) Camera record
         cam = Camera(
             device_id=dev.id,
@@ -186,9 +183,6 @@ def update_device(dev_id):
             cam = Camera(device_id=dev.id)
             db.session.add(cam)
 
-        if "serial_number" in cam:
-            cam["serial_number"] = cam["serial_number"] or None
-
         # update camera fields
         cam.name = dev.name
         cam.serial_number = params.get("serial_number", cam.serial_number)
@@ -207,7 +201,6 @@ def update_device(dev_id):
         )
 
         # ——— remove old streams safely ———
-        # clear default_stream_id to avoid FK error
         cam.default_stream_id = None
         db.session.flush()
         # delete all old streams
@@ -246,7 +239,6 @@ def update_device(dev_id):
 
     db.session.commit()
     return jsonify(ok=True)
-
 
 # ── DELETE DEVICE (cascades to Camera + Streams if your FKs are set ON DELETE CASCADE) ───
 def delete_device(dev_id):
