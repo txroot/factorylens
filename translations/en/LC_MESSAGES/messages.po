@@ -346,3 +346,6 @@ msgstr "Medium"
 
 msgid "Info"
 msgstr "Info"
+
+msgid "device_control_title"
+msgstr "Device Control"

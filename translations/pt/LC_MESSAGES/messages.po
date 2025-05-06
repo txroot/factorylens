@@ -352,3 +352,6 @@ msgstr "Média"
 
 msgid "Info"
 msgstr "Informativo"
+
+msgid "device_control_title"
+msgstr "Controlo de Dispositivos"

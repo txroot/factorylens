@@ -1,89 +1,77 @@
-(function() {
-    document.addEventListener("DOMContentLoaded", () => {
-  
-      // Fetch & update one card
-      async function refreshCard(card) {
-        const id = card.dataset.devId;
-        try {
-          const res = await fetch(`/apps/device-control/state/${id}`);
-          if (!res.ok) throw new Error(res.statusText);
-          const st = await res.json();
-  
-          // === Relays ===
-          card.querySelectorAll(".relay-toggle").forEach(el => {
-            const ch = el.dataset.channel;
-            el.checked = st.relay?.[ch]?.state === "on";
-          });
-  
-          // === Inputs (bulb on/off) ===
-          [0,1].forEach(idx => {
-            const val = st.input?.[idx] ?? 0;
-            const icon = document.getElementById(`input-icon-${id}-${idx}`);
-            if (!icon) return;
-            if (val) {
-              icon.classList.replace("ti-bulb-off", "ti-bulb");
-              icon.classList.replace("text-secondary", "text-warning");
-            } else {
-              icon.classList.replace("ti-bulb", "ti-bulb-off");
-              icon.classList.replace("text-warning", "text-secondary");
-            }
-          });
-  
-          // === Temperature ===
-          const tEl = document.getElementById(`temp-${id}`);
-          if (tEl) tEl.textContent = `${st.temperature ?? "—"}°C`;
-  
-          // === Wattage ===
-          const pEl = document.getElementById(`power-${id}`);
-          if (pEl) {
-            let raw = st.relay?.["0"]?.power;
-            let watts = "—";
+(async function() {
+  document.addEventListener("DOMContentLoaded", () => {
 
-            if (typeof raw === "number" || typeof raw === "string") {
-              // if it’s already a primitive (string or number), just use it
+    async function refreshCard(card) {
+      const id = card.dataset.devId;
+      try {
+        const res = await fetch(`/apps/device-control/state/${id}`);
+        if (!res.ok) throw new Error(res.statusText);
+        const st = await res.json();
+
+        // — Inputs (radio buttons) —
+        card.querySelectorAll(".input-radio").forEach(radio => {
+          // id is "input-<devId>-<idx>"
+          const parts = radio.id.split("-");
+          const idx   = parts[parts.length - 1];
+          radio.checked = Boolean(st.input?.[idx]);
+        });
+
+        // — Outputs (switches) —
+        card.querySelectorAll(".relay-toggle").forEach(el => {
+          const ch = el.dataset.channel;
+          el.checked = st.relay?.[ch]?.state === "on";
+        });
+
+        // — Temperature, Wattage, Voltage etc. — (unchanged)
+        const tEl = card.querySelector(`#temp-${id}`);
+        if (tEl) tEl.textContent = `${st.temperature ?? "—"}°C`;
+
+        const pEl = card.querySelector(`#power-${id}`);
+        if (pEl) {
+          let raw   = st.relay?.["0"]?.power;
+          let watts = "—";
+          if (raw != null) {
+            if (typeof raw === "object") {
+              const nums = Object.values(raw)
+                                 .filter(v => !isNaN(parseFloat(v)));
+              if (nums.length) watts = nums[0];
+            } else {
               watts = raw;
             }
-            else if (raw && typeof raw === "object") {
-              // pick the first numeric property you find
-              const nums = Object.values(raw).filter(v => typeof v === "number" || !isNaN(parseFloat(v)));
-              if (nums.length) watts = nums[0];
-            }
-
-            pEl.textContent = `${watts} W`;
           }
-  
-        } catch (e) {
-          console.warn("State refresh failed", e);
+          pEl.textContent = `${watts} W`;
         }
+
+        const vEl = card.querySelector(`#voltage-${id}`);
+        if (vEl) vEl.textContent = `${st.voltage ?? "—"} V`;
+
+      } catch (e) {
+        console.warn("State refresh failed", e);
       }
-  
-      // Initialize & poll every 5s
-      const cards = Array.from(document.querySelectorAll("[data-dev-id]"));
-      cards.forEach(refreshCard);
-      setInterval(() => cards.forEach(refreshCard), 5000);
-  
-      // Handle relay toggles
-      document.body.addEventListener("change", async e => {
-        if (!e.target.matches(".relay-toggle")) return;
-        const el = e.target;
-        const card = el.closest("[data-dev-id]");
-        const id = card.dataset.devId;
-        const ch = el.dataset.channel;
-        const turnOn = el.checked;
-  
-        el.disabled = true;
-        try {
-          await fetch(`/apps/device-control/relay/${id}/${ch}`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({on: turnOn})
-          });
-        } catch (err) {
-          console.error(err);
-        }
-        el.disabled = false;
-      });
-  
+    }
+
+    const cards = Array.from(document.querySelectorAll("[data-dev-id]"));
+    cards.forEach(refreshCard);
+    setInterval(() => cards.forEach(refreshCard), 5000);
+
+    // relay toggle handler: unchanged
+    document.body.addEventListener("change", async e => {
+      if (!e.target.matches(".relay-toggle")) return;
+      const el   = e.target;
+      const card = el.closest("[data-dev-id]");
+      const id   = card.dataset.devId;
+      const ch   = el.dataset.channel;
+      const on   = el.checked;
+      el.disabled = true;
+      try {
+        await fetch(`/apps/device-control/relay/${id}/${ch}`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({on})
+        });
+      } catch {}
+      el.disabled = false;
     });
-  })();
-  
+
+  });
+})();

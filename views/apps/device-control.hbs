@@ -32,34 +32,58 @@
         <!-- Body -->
         <div class="card-body d-flex flex-column">
 
-          <!-- Relay switches -->
-          <div class="d-flex justify-content-around mb-3">
-            {% for ch in [0,1] %}
-            <div class="form-check form-switch">
-              <input class="form-check-input relay-toggle"
-                     type="checkbox"
-                     id="relay-{{ dev.id }}-{{ ch }}"
-                     data-channel="{{ ch }}">
-              <label class="form-check-label" for="relay-{{ dev.id }}-{{ ch }}">
-                <i class="ti ti-power fs-6 me-1"></i> R{{ ch }}
-              </label>
+          <!-- I/O panel -->
+          <div class="d-flex mb-3 align-items-start">
+            <!-- Inputs column -->
+            <div class="flex-fill text-center">
+              <h6 class="small mb-2">
+                <!-- moved the bulb icon into the title -->
+                <i class="ti ti-circuit-switch-open fs-5 me-1 text-primary"></i> Inputs
+              </h6>
+              <div class="d-flex justify-content-around">
+                {% for idx in [0,1] %}
+                <div class="form-check">
+                  <!-- use radio button, disabled (read-only) -->
+                  <input class="form-check-input input-radio"
+                        type="radio"
+                        name="input-{{dev.id}}"
+                        id="input-{{dev.id}}-{{idx}}"
+                        disabled>
+                  <label class="form-check-label" for="input-{{dev.id}}-{{idx}}">
+                    I{{ idx }}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
             </div>
-            {% endfor %}
+
+            <!-- vertical separator -->
+            <div class="vr mx-3"></div>
+
+            <!-- Outputs column -->
+            <div class="flex-fill text-center">
+              <h6 class="small mb-2">
+                <!-- moved the power icon into the title -->
+                <i class="ti ti-power fs-5 me-1 text-primary"></i> Outputs
+              </h6>
+              <div class="d-flex justify-content-around">
+                {% for ch in [0,1] %}
+                <div class="form-check form-switch">
+                  <input class="form-check-input relay-toggle"
+                        type="checkbox"
+                        id="relay-{{dev.id}}-{{ch}}"
+                        data-channel="{{ch}}">
+                  <label class="form-check-label" for="relay-{{dev.id}}-{{ch}}">
+                    R{{ ch }}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
           </div>
 
-          <!-- Inputs with bulb icons -->
-          <div class="d-flex justify-content-around mb-3">
-            {% for idx in [0,1] %}
-            <div class="text-center">
-              <i id="input-icon-{{ dev.id }}-{{ idx }}"
-                 class="ti ti-bulb-off fs-4 text-secondary"></i>
-              <div class="small mt-1">I{{ idx }}</div>
-            </div>
-            {% endfor %}
-          </div>
-
-          <!-- Sensors: temp + plug icon for wattage -->
-          <div class="mt-auto d-flex justify-content-between small text-muted">
+          <!-- Sensors: temp + wattage + voltage -->
+          <div class="mt-auto d-flex justify-content-around small text-muted bg-light">
             <div>
               <i class="ti ti-temperature fs-6 me-1"></i>
               <span id="temp-{{ dev.id }}">—°C</span>
@@ -67,6 +91,10 @@
             <div>
               <i class="ti ti-plug fs-6 me-1"></i>
               <span id="power-{{ dev.id }}">— W</span>
+            </div>
+            <div>
+              <i class="ti ti-battery fs-6 me-1"></i>
+              <span id="voltage-{{ dev.id }}">— V</span>
             </div>
           </div>
 
