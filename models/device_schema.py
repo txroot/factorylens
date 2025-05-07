@@ -9,8 +9,9 @@ class DeviceSchema(db.Model):
     ui_hints    = db.Column(db.JSON)
     version     = db.Column(db.String(20), default="1.0.0")
 
-    # ← one‑to‑one to DeviceModel
+    # one‑to‑one to DeviceModel
     model = db.relationship("DeviceModel", back_populates="schema", uselist=False)
 
     def __repr__(self):
         return f"<DeviceSchema {self.id} v{self.version}>"
+    

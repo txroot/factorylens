@@ -1,6 +1,7 @@
 # models/device_model.py
 
 from extensions import db
+from models.device_action_schema import DeviceActionSchema
 
 class DeviceModel(db.Model):
     """
@@ -20,6 +21,14 @@ class DeviceModel(db.Model):
                              db.ForeignKey("device_categories.id"),
                              nullable=False)
     category    = db.relationship("DeviceCategory", back_populates="models")
+
+    # optional FK → Action schema
+    action_schema = db.relationship(
+        "DeviceActionSchema", backref="model",
+        cascade="all, delete-orphan",
+        single_parent=True,
+        uselist=False
+    )
 
     # optional FK → JSON schema
     schema_id   = db.Column(db.Integer,

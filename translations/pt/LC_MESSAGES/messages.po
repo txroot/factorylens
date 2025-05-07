@@ -412,3 +412,30 @@ msgstr "Copiar URL"
 
 msgid "Hide URL"
 msgstr "Ocultar URL"
+
+msgid "actions"
+msgstr "Ações"
+
+msgid "No Action Agent device is configured."
+msgstr "Nenhum dispositivo Action Agent está configurado."
+
+msgid "Add one now"
+msgstr "Adicione um agora"
+
+msgid "Define simple IF‑THEN rules linking device events to actions."
+msgstr "Defina regras simples SE‑ENTÃO ligando eventos de dispositivos a ações."
+
+msgid "New Action"
+msgstr "Nova Ação"
+
+msgid "Name"
+msgstr "Nome"
+
+msgid "Description"
+msgstr "Descrição"
+
+msgid "Enabled"
+msgstr "Ativado"
+
+msgid "automations"
+msgstr "Automações"

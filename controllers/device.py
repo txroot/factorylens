@@ -20,6 +20,7 @@ def list_devices():
             "model": d.model.name if d.model else "—",
             "category": d.model.category.name if d.model and d.model.category else "—",
             "status": d.status,
+            "enabled": d.enabled,
             "last_seen": d.last_seen.strftime("%Y-%m-%d %H:%M") if d.last_seen else "",
         }
         for d in Device.query.order_by(Device.id.desc())

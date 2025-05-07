@@ -21,6 +21,8 @@ from models.device_schema import DeviceSchema
 from models.device import Device
 from models.camera import Camera
 from models.camera_stream import CameraStream
+from models.actions import Action
+from models.device_action_schema import DeviceActionSchema
 
 # Import Blueprints
 from middleware.auth import auth_bp
@@ -36,6 +38,9 @@ from routes.storage import storage_bp
 from routes.apps.storage import apps_storage_bp
 from routes.apps.elfinder_connector import elfinder_bp
 from routes.apps.device_control import apps_ctrl_bp
+from routes.actions import actions_bp
+
+# from routes.automations import automations_bp   # enable when ready
 
 # Import Mail Client
 from utils.mail_client import mail
@@ -114,6 +119,8 @@ def create_app():
     app.register_blueprint(apps_storage_bp)
     app.register_blueprint(elfinder_bp)
     app.register_blueprint(apps_ctrl_bp)
+    app.register_blueprint(actions_bp)
+    # app.register_blueprint(automations_bp)
 
     # ——— START POLLING SCHEDULER ———
     scheduler = BackgroundScheduler()
