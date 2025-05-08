@@ -1,6 +1,7 @@
 # app.py
 
 import os
+os.environ.setdefault("FLASK_APP", __name__)
 
 # Flask
 from flask import Flask
@@ -22,7 +23,6 @@ from models.device import Device
 from models.camera import Camera
 from models.camera_stream import CameraStream
 from models.actions import Action
-from models.device_action_schema import DeviceActionSchema
 
 # Import Blueprints
 from middleware.auth import auth_bp
@@ -79,11 +79,11 @@ def create_app():
     
     # Bind database
     db.init_app(app)
-    login_manager.init_app(app)
     
     # Initialize Flask-Migrate
-    migrate = Migrate(app, db)
-
+    Migrate(app, db)
+    login_manager.init_app(app)
+    
     with app.app_context():
         
         db.create_all()

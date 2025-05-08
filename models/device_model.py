@@ -1,7 +1,7 @@
 # models/device_model.py
 
 from extensions import db
-from models.device_action_schema import DeviceActionSchema
+from models.device_schema       import DeviceSchema
 
 class DeviceModel(db.Model):
     """
@@ -22,25 +22,17 @@ class DeviceModel(db.Model):
                              nullable=False)
     category    = db.relationship("DeviceCategory", back_populates="models")
 
-    # optional FK → Action schema
-    action_schema = db.relationship(
-        "DeviceActionSchema", backref="model",
+    # ── Schemas (one row per *kind*) ───────────────────────────────────────
+    schemas = db.relationship(
+        "DeviceSchema",
+        backref="model",
         cascade="all, delete-orphan",
-        single_parent=True,
-        uselist=False
+        single_parent=True
     )
 
-    # optional FK → JSON schema
-    schema_id   = db.Column(db.Integer,
-                             db.ForeignKey("device_schemas.id"),
-                             unique=True)
-    schema = db.relationship(
-        "DeviceSchema",
-        back_populates="model",
-        cascade="all, delete-orphan",
-        single_parent=True,
-        uselist=False,
-    )
+    # nice helpers
+    def get_schema(self, kind: str):
+        return next((s for s in self.schemas if s.kind == kind), None)
 
     devices     = db.relationship("Device", back_populates="model")
 

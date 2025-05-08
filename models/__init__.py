@@ -8,7 +8,6 @@ from .device_category import DeviceCategory
 from .device_model import DeviceModel
 from .device_schema import DeviceSchema
 from .actions import Action
-from .device_action_schema import DeviceActionSchema
 
 # For migrations or Flask shell usage
 __all__ = [
@@ -18,7 +17,6 @@ __all__ = [
     "DeviceCategory",
     "DeviceModel",
     "DeviceSchema",
-    "DeviceActionSchema",
     "Action",
     "CameraStream"
 ]
