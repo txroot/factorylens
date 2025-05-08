@@ -9,6 +9,9 @@ class DeviceSchema(db.Model):
     ui_hints    = db.Column(db.JSON)
     version     = db.Column(db.String(20), default="1.0.0")
 
+    kind = db.Column(db.Enum('config','topic','function', name='schema_kind'),
+                     default='config', nullable=False)
+
     # one‑to‑one to DeviceModel
     model = db.relationship("DeviceModel", back_populates="schema", uselist=False)
 
