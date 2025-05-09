@@ -1,3 +1,5 @@
+// public/js/settings/actions.js
+
 /* Factory‑Lens – Actions page (IF → THEN → EVALUATE)
    Supports schema-based validation, type-filtering, and tooltips */
 

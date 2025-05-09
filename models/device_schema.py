@@ -1,3 +1,5 @@
+# models/device_schema.py
+
 from __future__ import annotations
 from datetime import datetime
 from extensions import db

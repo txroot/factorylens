@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from flask import jsonify, request, abort
 from extensions import db
-from models.actions          import Action
+from models.actions import Action
 from models.device           import Device
 from models.device_model     import DeviceModel
 from models.device_category  import DeviceCategory
@@ -36,6 +36,20 @@ def ensure_agent_exists() -> bool:
         device_model_id=mdl.id, enabled=True, status="online").first()
     return bool(agent)
 
+VALID_BRANCHES = ('success', 'error')
+
+def _validate_node(node: dict, is_trigger=False, is_eval=False):
+    # triggers: match source/io
+    if is_trigger:
+        _validate_trigger(node)
+    # THEN: simple command
+    elif not is_eval:
+        _validate_result(node)
+    # EVAL branches: same as commands but require branch field
+    else:
+        if node.get('branch') not in VALID_BRANCHES:
+            abort(400, f"Invalid branch {node.get('branch')}")
+        _validate_result(node)
 
 # --------------------------------------------------------------------
 #  Helpers for schema‑aware validation
@@ -120,26 +134,59 @@ def get_action(action_id: int):
 # ────────────────────────────────────────────────────────────────────
 def create_action():
     if not ensure_agent_exists():
-        abort(412, "No Action Agent device is enabled & online")
+        abort(412, "No Action Agent device is enabled & online")
 
     data = request.get_json(silent=True) or {}
-    if not data.get("name") or "trigger" not in data or "result" not in data:
-        abort(400, "name, trigger and result are required")
+    # basic sanity
+    for f in ('name','trigger','result','evaluate'):
+        if f not in data:
+            abort(400, f"{f} is required")
 
-    # unique name
-    if Action.query.filter_by(name=data["name"].strip()).first():
+    # unique name check
+    if Action.query.filter_by(name=data['name'].strip()).first():
         abort(409, "An Action with that name already exists")
 
-    # validate against schemas
-    _validate_trigger(data["trigger"])
-    _validate_result(data["result"])
+    trg = data['trigger']
+    res = data['result']
+    ev  = data['evaluate']
 
+    # validate individual pieces
+    _validate_trigger(trg)
+    _validate_result(res)
+    # build core chain
+    chain = []
+    # IF node
+    chain.append({
+        'device_id': trg['device_id'],
+        'source':    'io',
+        'topic':     trg['topic'],
+        'cmp':       trg.get('cmp','=='),
+        'match':     {'value': trg.get('value','')}
+    })
+    # THEN node
+    chain.append({
+        'device_id':   res['device_id'],
+        'command':     res['command'],
+        'topic':       res['topic'],
+        'ignore_input':bool(res.get('ignore_input',False))
+    })
+    # EVALUATE branches
+    mode = ev.get('mode','ignore')
+    if mode in ('success','both') and ev.get('success'):
+        sb = ev['success']
+        _validate_result(sb)
+        chain.append({**sb, 'branch':'success'})
+    if mode in ('error','both') and ev.get('error'):
+        eb = ev['error']
+        _validate_result(eb)
+        chain.append({**eb, 'branch':'error'})
+
+    # persist
     a = Action(
-        name=data["name"].strip(),
-        description=data.get("description", "").strip(),
-        trigger=data["trigger"],
-        result=data["result"],
-        enabled=bool(data.get("enabled", True)),
+        name=data['name'].strip(),
+        description=data.get('description','').strip(),
+        chain=chain,
+        enabled=bool(data.get('enabled',True))
     )
     db.session.add(a)
     db.session.commit()
@@ -153,24 +200,19 @@ def update_action(action_id: int):
     a    = Action.query.get_or_404(action_id)
     data = request.get_json(silent=True) or {}
 
-    if "name" in data and data["name"].strip() != a.name:
-        if Action.query.filter_by(name=data["name"].strip()).first():
+    if 'name' in data and data['name'].strip() != a.name:
+        if Action.query.filter_by(name=data['name'].strip()).first():
             abort(409, "Another Action already has that name")
-        a.name = data["name"].strip()
-
-    if "description" in data:
-        a.description = data["description"].strip()
-
-    if "trigger" in data:
-        _validate_trigger(data["trigger"])
-        a.trigger = data["trigger"]
-
-    if "result" in data:
-        _validate_result(data["result"])
-        a.result = data["result"]
-
-    if "enabled" in data:
-        a.enabled = bool(data["enabled"])
+        a.name = data['name'].strip()
+    if 'description' in data:
+        a.description = data['description'].strip()
+    if 'enabled' in data:
+        a.enabled = bool(data['enabled'])
+    if any(k in data for k in ('trigger','result','evaluate')):
+        # rebuild the chain exactly as in create_action
+        # (reuse the same steps as above)
+        ...  # repeat chain-building logic
+        a.chain = new_chain
 
     db.session.commit()
     return jsonify(ok=True)

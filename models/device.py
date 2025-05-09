@@ -1,3 +1,5 @@
+# models/device.py
+
 from extensions import db
 from datetime import datetime
 
@@ -18,7 +20,31 @@ class Device(db.Model):
                                 db.ForeignKey("device_models.id"),
                                 nullable=False)
     model           = db.relationship("DeviceModel", back_populates="devices")
-    '''
+    '''# models/actions.py
+from extensions import db
+from datetime import datetime
+
+class Action(db.Model):
+    __tablename__ = "actions"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    name        = db.Column(db.String(120), nullable=False, unique=True)
+    description = db.Column(db.Text)
+
+    # JSON blobs – keep them flexible
+    trigger     = db.Column(db.JSON, nullable=False)   # e.g. {device,event,…}
+    result      = db.Column(db.JSON, nullable=False)   # e.g. [{device,action,…}, …]
+
+    enabled     = db.Column(db.Boolean, default=True, nullable=False)
+
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at  = db.Column(db.DateTime,
+                            default=datetime.utcnow,
+                            onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Action {self.name} enabled={self.enabled}>"
+
     device_type = db.Column(
         db.Enum('shelly1', 'shelly2', 'generic', name='device_type'),
         nullable=False,

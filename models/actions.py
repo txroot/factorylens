@@ -10,8 +10,7 @@ class Action(db.Model):
     description = db.Column(db.Text)
 
     # JSON blobs – keep them flexible
-    trigger     = db.Column(db.JSON, nullable=False)   # e.g. {device,event,…}
-    result      = db.Column(db.JSON, nullable=False)   # e.g. [{device,action,…}, …]
+    chain       = db.Column(db.JSON, nullable=False)
 
     enabled     = db.Column(db.Boolean, default=True, nullable=False)
 
