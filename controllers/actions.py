@@ -119,14 +119,18 @@ def list_actions():
 
 def get_action(action_id: int):
     a = Action.query.get_or_404(action_id)
-    return jsonify({
-        "id": a.id,
-        "name": a.name,
+    
+    action = {
+        "id":          a.id,
+        "name":        a.name,
         "description": a.description,
-        "trigger": a.trigger,
-        "result": a.result,
-        "enabled": a.enabled,
-    })
+        "chain":       a.chain,
+        "enabled":     a.enabled,
+    }
+
+    print("Action: ", action)
+
+    return jsonify(action)
 
 
 # ────────────────────────────────────────────────────────────────────

@@ -111,16 +111,16 @@
               <div class="col-12">
                 <div class="btn-group" role="group">
                   <input type="radio" class="btn-check" name="eval_mode" id="evalIgnore" value="ignore" checked>
-                  <label class="btn btn-outline-secondary" for="evalIgnore" data-bs-toggle="tooltip" title="{{ _('Do nothing after THEN (default)') }}">Ignore</label>
+                  <label class="btn btn-outline-dark" for="evalIgnore" data-bs-toggle="tooltip" title="{{ _('Do nothing after THEN (default)') }}">Ignore</label>
 
                   <input type="radio" class="btn-check" name="eval_mode" id="evalSuccess" value="success">
-                  <label class="btn btn-outline-secondary" for="evalSuccess" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN succeeded') }}">On Success</label>
+                  <label class="btn btn-outline-dark" for="evalSuccess" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN succeeded') }}">On Success</label>
 
                   <input type="radio" class="btn-check" name="eval_mode" id="evalError" value="error">
-                  <label class="btn btn-outline-secondary" for="evalError" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN failed') }}">On Error</label>
+                  <label class="btn btn-outline-dark" for="evalError" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN failed') }}">On Error</label>
 
                   <input type="radio" class="btn-check" name="eval_mode" id="evalBoth" value="both">
-                  <label class="btn btn-outline-secondary" for="evalBoth" data-bs-toggle="tooltip" title="{{ _('Configure both success and error branches') }}">Both</label>
+                  <label class="btn btn-outline-dark" for="evalBoth" data-bs-toggle="tooltip" title="{{ _('Configure both success and error branches') }}">Both</label>
                 </div>
               </div>
 
@@ -172,8 +172,8 @@
           </div><!-- /modal-body -->
 
           <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
-            <button id="saveActionBtn" class="btn btn-primary">{{ _('Save') }}</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+            <button type="button" id="saveActionBtn" class="btn btn-primary">{{ _('Save') }}</button>
           </div>
         </form>
       </div>

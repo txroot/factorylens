@@ -55,6 +55,9 @@ def action_item(action_id: int):
 
 @actions_bp.route("/", methods=["POST"])
 def add_action():
+    # Debug
+    print("POST /actions/")
+    print(request.json)
     return create_action()
 
 

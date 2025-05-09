@@ -77,8 +77,8 @@ def main():
             },
             "input": {"0": 0, "1": 0},
             "input_event": {
-                "0": {"event": "", "event_cnt": 0},
-                "1": {"event": "", "event_cnt": 0}
+                "0": {"event": "L", "event_cnt": 1},
+                "1": {"event": "S", "event_cnt": 2}
             },
             "temperature": 44.58,
             "temperature_f": 112.24,
