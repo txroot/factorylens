@@ -23,11 +23,11 @@
 
   <div class="d-flex justify-content-end mb-2">
     <button id="addActionBtn" class="btn btn-primary">
-      <i class="ti ti-plus"></i> {{ _('New Action') }}
+      <i class="ti ti-plus me-1"></i> {{ _('New Action') }}
     </button>
   </div>
 
-  <div class="table-responsive">
+  <div class="table-responsive mb-4">
     <table id="actionsTable" class="table table-hover align-middle">
       <thead class="table-light">
         <tr>
@@ -47,8 +47,10 @@
       <div class="modal-content">
 
         <div class="modal-header">
-          <h5 class="modal-title"><span id="modalTitle">{{ _('New Action') }}</span></h5>
-          <button class="btn-close" data-bs-dismiss="modal"></button>
+          <h5 class="modal-title">
+            <span id="modalTitle">{{ _('New Action') }}</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
         <form id="actionForm" class="needs-validation" novalidate>
@@ -66,14 +68,24 @@
                 <textarea name="description" class="form-control" rows="2"></textarea>
               </div>
 
-              <!-- IF row -->
-              <div class="col-12"><h6 class="mt-2 mb-1">IF <span class="text-muted small">{{ _('incoming event') }}</span></h6></div>
-              <div class="col-md-4">
+              <!-- IF step -->
+              <div class="col-12">
+                <h6 class="mt-4 mb-1">{{ _('IF') }} <small class="text-muted">{{ _('incoming event') }}</small></h6>
+              </div>
+              <div class="col-md-3">
                 <label class="form-label">{{ _('Device') }} *</label>
                 <select name="trigger_device" class="form-select" required></select>
               </div>
               <div class="col-md-4">
-                <label class="form-label">{{ _('Topic / Channel') }} *</label>
+                <label class="form-label">
+                  <i class="ti ti-rotate-clockwise me-1"></i> {{ _('Event Topic') }} *
+                </label>
+                <select name="trigger_event_topic" class="form-select" required disabled></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">
+                  <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }} *
+                </label>
                 <select name="trigger_topic" class="form-select" required disabled></select>
               </div>
               <div class="col-md-2 d-none" id="triggerCmpCol"></div>
@@ -82,98 +94,229 @@
                 <input name="trigger_value" class="form-control" required disabled>
               </div>
 
-              <!-- THEN row -->
-              <div class="col-12 pt-2 d-flex align-items-center">
-                <h6 class="mb-0">THEN <span class="text-muted small">{{ _('run command') }}</span></h6>
-                <small class="ms-3 d-inline-flex align-items-center"
-                       data-bs-toggle="tooltip"
+              <!-- custom poll interval -->
+              <div class="row g-3 mt-2 custom-poll d-none">
+                <div class="col-md-4 offset-md-3">
+                  <label class="form-check-label">
+                    <input type="checkbox" id="triggerPollChk" class="form-check-input me-1">
+                    {{ _('Set custom poll interval') }}
+                  </label>
+                </div>
+                <div class="col-md-2">
+                  <input type="number" name="trigger_poll_value" class="form-control" min="0" disabled>
+                </div>
+                <div class="col-md-2">
+                  <select name="trigger_poll_unit" class="form-select" disabled>
+                    <option value="ms">ms</option>
+                    <option value="sec">s</option>
+                    <option value="min">m</option>
+                    <option value="hour">h</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- THEN step -->
+              <div class="col-12 pt-4 d-flex align-items-center">
+                <h6 class="mb-0">{{ _('THEN') }} 
+                  <small class="text-muted">{{ _('run command') }}</small>
+                </h6>
+                <small class="ms-3 d-inline-flex align-items-center" data-bs-toggle="tooltip"
                        title="{{ _('Ignore input-type filtering for this THEN node') }}">
                   <input type="checkbox" class="form-check-input me-1" id="ignoreInputChk">
                   <label for="ignoreInputChk" class="mb-0 small">{{ _('Ignore input') }}</label>
                 </small>
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <label class="form-label">{{ _('Device') }} *</label>
                 <select name="result_device" class="form-select" required></select>
               </div>
               <div class="col-md-4">
-                <label class="form-label">{{ _('Topic / Channel') }} *</label>
+                <label class="form-label">
+                  <i class="ti ti-terminal me-1"></i> {{ _('Command Topic') }} *
+                </label>
+                <select name="result_event_topic" class="form-select" required disabled></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">
+                  <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }} *
+                </label>
                 <select name="result_topic" class="form-select" required disabled></select>
               </div>
               <div class="col-md-2 d-none" id="resultCmpCol"></div>
               <div class="col-md-4" id="resultValCol">
-                <label class="form-label">{{ _('Command / Payload') }} *</label>
+                <label class="form-label">{{ _('Payload') }} *</label>
                 <input name="result_command" class="form-control" required disabled>
               </div>
 
-              <!-- EVALUATE mode selector -->
-              <div class="col-12 pt-2"><h6 class="mb-1">EVALUATE <span class="text-muted small">{{ _('after THEN finishes') }}</span></h6></div>
+              <!-- custom timeout for THEN -->
+              <div class="row g-3 mt-2 custom-timeout d-none">
+                <div class="col-md-4 offset-md-3">
+                  <label class="form-check-label">
+                    <input type="checkbox" id="resultTimeoutChk" class="form-check-input me-1">
+                    {{ _('Set custom timeout') }}
+                  </label>
+                </div>
+                <div class="col-md-2">
+                  <input type="number" name="result_timeout_value" class="form-control" min="0" disabled>
+                </div>
+                <div class="col-md-2">
+                  <select name="result_timeout_unit" class="form-select" disabled>
+                    <option value="ms">ms</option>
+                    <option value="sec">s</option>
+                    <option value="min">m</option>
+                    <option value="hour">h</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- EVALUATE step -->
+              <div class="col-12 pt-4">
+                <h6 class="mb-1">{{ _('EVALUATE') }}
+                  <small class="text-muted">{{ _('after THEN finishes') }}</small>
+                </h6>
+              </div>
               <div class="col-12">
                 <div class="btn-group" role="group">
                   <input type="radio" class="btn-check" name="eval_mode" id="evalIgnore" value="ignore" checked>
-                  <label class="btn btn-outline-dark" for="evalIgnore" data-bs-toggle="tooltip" title="{{ _('Do nothing after THEN (default)') }}">Ignore</label>
+                  <label class="btn btn-outline-dark" for="evalIgnore"
+                         data-bs-toggle="tooltip"
+                         title="{{ _('Do nothing after THEN (default)') }}">
+                    {{ _('Ignore') }}
+                  </label>
 
                   <input type="radio" class="btn-check" name="eval_mode" id="evalSuccess" value="success">
-                  <label class="btn btn-outline-dark" for="evalSuccess" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN succeeded') }}">On Success</label>
+                  <label class="btn btn-outline-dark" for="evalSuccess"
+                         data-bs-toggle="tooltip"
+                         title="{{ _('Run branch only when THEN succeeded') }}">
+                    {{ _('On Success') }}
+                  </label>
 
                   <input type="radio" class="btn-check" name="eval_mode" id="evalError" value="error">
-                  <label class="btn btn-outline-dark" for="evalError" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN failed') }}">On Error</label>
+                  <label class="btn btn-outline-dark" for="evalError"
+                         data-bs-toggle="tooltip"
+                         title="{{ _('Run branch only when THEN failed') }}">
+                    {{ _('On Error') }}
+                  </label>
 
                   <input type="radio" class="btn-check" name="eval_mode" id="evalBoth" value="both">
-                  <label class="btn btn-outline-dark" for="evalBoth" data-bs-toggle="tooltip" title="{{ _('Configure both success and error branches') }}">Both</label>
+                  <label class="btn btn-outline-dark" for="evalBoth"
+                         data-bs-toggle="tooltip"
+                         title="{{ _('Configure both success and error branches') }}">
+                    {{ _('Both') }}
+                  </label>
                 </div>
               </div>
 
               <!-- Success branch -->
-              <div class="col-12 border-start ps-3 mt-2 d-none" id="succRow">
+              <div class="col-12 border-start ps-3 mt-3 d-none" id="succRow">
                 <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label text-success">{{ _('Success → Device') }}</label>
+                  <div class="col-md-3">
+                    <label class="form-label text-success">{{ _('Device') }}</label>
                     <select name="succ_device" class="form-select"></select>
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label text-success">{{ _('Topic / Channel') }}</label>
+                    <label class="form-label text-success">
+                      <i class="ti ti-terminal me-1"></i> {{ _('Command Topic') }}
+                    </label>
+                    <select name="succ_event_topic" class="form-select" disabled></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-success">
+                      <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }}
+                    </label>
                     <select name="succ_topic" class="form-select" disabled></select>
                   </div>
                   <div class="col-md-2 d-none" id="succCmpCol"></div>
-                  <div class="col-md-4" id="succValCol">
-                    <label class="form-label text-success">{{ _('Command / Payload') }}</label>
+                  <div class="col-md-2" id="succValCol">
+                    <label class="form-label text-success">{{ _('Payload') }}</label>
                     <input name="succ_command" class="form-control" disabled>
+                  </div>
+                </div>
+                <!-- custom timeout for success -->
+                <div class="row g-3 mt-2 custom-timeout-succ d-none">
+                  <div class="col-md-4 offset-md-3">
+                    <label class="form-check-label">
+                      <input type="checkbox" id="succTimeoutChk" class="form-check-input me-1">
+                      {{ _('Set custom timeout') }}
+                    </label>
+                  </div>
+                  <div class="col-md-2">
+                    <input type="number" name="succ_timeout_value" class="form-control" min="0" disabled>
+                  </div>
+                  <div class="col-md-2">
+                    <select name="succ_timeout_unit" class="form-select" disabled>
+                      <option value="ms">ms</option>
+                      <option value="sec">s</option>
+                      <option value="min">m</option>
+                      <option value="hour">h</option>
+                    </select>
                   </div>
                 </div>
               </div>
 
               <!-- Error branch -->
-              <div class="col-12 border-start ps-3 mt-2 d-none" id="errRow">
+              <div class="col-12 border-start ps-3 mt-3 d-none" id="errRow">
                 <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label text-danger">{{ _('Error → Device') }}</label>
+                  <div class="col-md-3">
+                    <label class="form-label text-danger">{{ _('Device') }}</label>
                     <select name="err_device" class="form-select"></select>
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label text-danger">{{ _('Topic / Channel') }}</label>
+                    <label class="form-label text-danger">
+                      <i class="ti ti-terminal me-1"></i> {{ _('Command Topic') }}
+                    </label>
+                    <select name="err_event_topic" class="form-select" disabled></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label text-danger">
+                      <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }}
+                    </label>
                     <select name="err_topic" class="form-select" disabled></select>
                   </div>
                   <div class="col-md-2 d-none" id="errCmpCol"></div>
-                  <div class="col-md-4" id="errValCol">
-                    <label class="form-label text-danger">{{ _('Command / Payload') }}</label>
+                  <div class="col-md-2" id="errValCol">
+                    <label class="form-label text-danger">{{ _('Payload') }}</label>
                     <input name="err_command" class="form-control" disabled>
+                  </div>
+                </div>
+                <!-- custom timeout for error -->
+                <div class="row g-3 mt-2 custom-timeout-err d-none">
+                  <div class="col-md-4 offset-md-3">
+                    <label class="form-check-label">
+                      <input type="checkbox" id="errTimeoutChk" class="form-check-input me-1">
+                      {{ _('Set custom timeout') }}
+                    </label>
+                  </div>
+                  <div class="col-md-2">
+                    <input type="number" name="err_timeout_value" class="form-control" min="0" disabled>
+                  </div>
+                  <div class="col-md-2">
+                    <select name="err_timeout_unit" class="form-select" disabled>
+                      <option value="ms">ms</option>
+                      <option value="sec">s</option>
+                      <option value="min">m</option>
+                      <option value="hour">h</option>
+                    </select>
                   </div>
                 </div>
               </div>
 
               <!-- enabled toggle -->
-              <div class="col-12 form-switch mt-3">
+              <div class="col-12 form-switch mt-4">
                 <input class="form-check-input" type="checkbox" id="enabledChk" name="enabled" checked>
                 <label class="form-check-label" for="enabledChk">{{ _('Enabled') }}</label>
               </div>
 
-            </div><!-- /row -->
-          </div><!-- /modal-body -->
+            </div><!-- /.row -->
+          </div><!-- /.modal-body -->
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
-            <button type="button" id="saveActionBtn" class="btn btn-primary">{{ _('Save') }}</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              {{ _('Cancel') }}
+            </button>
+            <button type="button" id="saveActionBtn" class="btn btn-primary">
+              <i class="ti ti-save me-1"></i> {{ _('Save') }}
+            </button>
           </div>
         </form>
       </div>
