@@ -4,7 +4,6 @@
 <h2 class="mt-4 fw-bold">{{ _('Actions') }}</h2>
 
 {% if not agent_ok %}
-  <!-- Empty-state – no Action Agent device -->
   <section class="d-flex flex-column align-items-center justify-content-center" style="height:460px">
     <img src="{{ url_for('static', filename='img/actions/undraw_accept-tasks.svg') }}"
          class="mb-4" style="max-width:260px" alt="">
@@ -17,7 +16,7 @@
 
 {% else %}
   <p class="mb-3 text-muted">
-    {{ _('Create simple <strong>IF → THEN → EVALUATE</strong> rules that react to device events.')|safe }}
+    {{ _('Create <strong>IF → THEN → EVALUATE</strong> rules that react to device events.')|safe }}
   </p>
 
   <div class="d-flex justify-content-end mb-2">
@@ -40,10 +39,11 @@
     </table>
   </div>
 
-  <!-- ─── Action Builder ────────────────────────────────────────── -->
+  <!-- ─── Action Builder Modal ─────────────────────────────────────── -->
   <div class="modal fade" id="actionModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
       <div class="modal-content">
+
         <div class="modal-header">
           <h5 class="modal-title"><span id="modalTitle">{{ _('New Action') }}</span></h5>
           <button class="btn-close" data-bs-dismiss="modal"></button>
@@ -53,22 +53,19 @@
           <div class="modal-body">
             <div class="row g-3">
 
-              <!-- name & description -->
+              <!-- meta -->
               <div class="col-12">
                 <label class="form-label">{{ _('Name') }} *</label>
                 <input name="name" class="form-control" required>
                 <div class="invalid-feedback">{{ _('Required') }}</div>
               </div>
-
               <div class="col-12">
                 <label class="form-label">{{ _('Description') }}</label>
                 <textarea name="description" class="form-control" rows="2"></textarea>
               </div>
 
-              <!-- ── Trigger row ── -->
-              <div class="col-12">
-                <h6 class="mt-2 mb-1">{{ _('IF (device event)') }}</h6>
-              </div>
+              <!-- IF row -->
+              <div class="col-12"><h6 class="mt-2 mb-1">IF <span class="text-muted small">{{ _('incoming event') }}</span></h6></div>
               <div class="col-md-4">
                 <label class="form-label">{{ _('Device') }} *</label>
                 <select name="trigger_device" class="form-select" required></select>
@@ -77,18 +74,21 @@
                 <label class="form-label">{{ _('Topic / Channel') }} *</label>
                 <select name="trigger_topic" class="form-select" required disabled></select>
               </div>
-              <div class="col-md-2 d-none" id="triggerCmpCol">
-                <label class="form-label">{{ _('Cmp.') }}</label>
-                <select name="trigger_cmp" class="form-select"></select>
-              </div>
+              <div class="col-md-2 d-none" id="triggerCmpCol"></div>
               <div class="col-md-2" id="triggerValCol">
                 <label class="form-label">{{ _('Value') }} *</label>
                 <input name="trigger_value" class="form-control" required disabled>
               </div>
 
-              <!-- ── THEN row ── -->
-              <div class="col-12 pt-2">
-                <h6 class="mb-1">{{ _('THEN (send command)') }}</h6>
+              <!-- THEN row -->
+              <div class="col-12 pt-2 d-flex align-items-center">
+                <h6 class="mb-0">THEN <span class="text-muted small">{{ _('run command') }}</span></h6>
+                <small class="ms-3 d-inline-flex align-items-center"
+                       data-bs-toggle="tooltip"
+                       title="{{ _('Ignore input-type filtering for this THEN node') }}">
+                  <input type="checkbox" class="form-check-input me-1" id="ignoreInputChk">
+                  <label for="ignoreInputChk" class="mb-0 small">{{ _('Ignore input') }}</label>
+                </small>
               </div>
               <div class="col-md-4">
                 <label class="form-label">{{ _('Device') }} *</label>
@@ -98,57 +98,65 @@
                 <label class="form-label">{{ _('Topic / Channel') }} *</label>
                 <select name="result_topic" class="form-select" required disabled></select>
               </div>
-              <div class="col-md-2 d-none" id="resultCmpCol">
-                <label class="form-label">{{ _('Cmp.') }}</label>
-                <select name="result_cmp" class="form-select"></select>
-              </div>
-              <div class="col-md-2" id="resultValCol">
+              <div class="col-md-2 d-none" id="resultCmpCol"></div>
+              <div class="col-md-4" id="resultValCol">
                 <label class="form-label">{{ _('Command / Payload') }} *</label>
                 <input name="result_command" class="form-control" required disabled>
               </div>
 
-              <!-- ── EVALUATE row ── -->
-              <div class="col-12 pt-2"><h6>{{ _('EVALUATE') }}</h6></div>
-              <div class="col-12 form-check">
-                <input class="form-check-input" type="radio" name="evaluate" id="eval_ignore" value="ignore" checked>
-                <label class="form-check-label" for="eval_ignore">{{ _('Ignore result') }}</label>
-              </div>
-              <div class="col-md-6 form-check">
-                <input class="form-check-input" type="radio" name="evaluate" id="eval_success" value="success">
-                <label class="form-check-label" for="eval_success">{{ _('On Success') }}</label>
-              </div>
-              <div class="col-md-6 form-check">
-                <input class="form-check-input" type="radio" name="evaluate" id="eval_error" value="error">
-                <label class="form-check-label" for="eval_error">{{ _('On Error') }}</label>
-              </div>
+              <!-- EVALUATE mode selector -->
+              <div class="col-12 pt-2"><h6 class="mb-1">EVALUATE <span class="text-muted small">{{ _('after THEN finishes') }}</span></h6></div>
+              <div class="col-12">
+                <div class="btn-group" role="group">
+                  <input type="radio" class="btn-check" name="eval_mode" id="evalIgnore" value="ignore" checked>
+                  <label class="btn btn-outline-secondary" for="evalIgnore" data-bs-toggle="tooltip" title="{{ _('Do nothing after THEN (default)') }}">Ignore</label>
 
-              <div id="successConfig" class="row g-3 d-none">
-                <div class="col-md-4">
-                  <label class="form-label">{{ _('Device') }}</label>
-                  <select name="eval_success_device" class="form-select" disabled></select>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">{{ _('Function') }}</label>
-                  <select name="eval_success_fn" class="form-select" disabled></select>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">{{ _('Args (JSON)') }}</label>
-                  <input name="eval_success_args" class="form-control" disabled>
+                  <input type="radio" class="btn-check" name="eval_mode" id="evalSuccess" value="success">
+                  <label class="btn btn-outline-secondary" for="evalSuccess" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN succeeded') }}">On Success</label>
+
+                  <input type="radio" class="btn-check" name="eval_mode" id="evalError" value="error">
+                  <label class="btn btn-outline-secondary" for="evalError" data-bs-toggle="tooltip" title="{{ _('Run branch only when THEN failed') }}">On Error</label>
+
+                  <input type="radio" class="btn-check" name="eval_mode" id="evalBoth" value="both">
+                  <label class="btn btn-outline-secondary" for="evalBoth" data-bs-toggle="tooltip" title="{{ _('Configure both success and error branches') }}">Both</label>
                 </div>
               </div>
 
-              <div id="errorConfig" class="row g-3 d-none">
-                <div class="col-md-4">
-                  <label class="form-label">{{ _('Device') }}</label>
-                  <select name="eval_error_device" class="form-select" disabled></select>
+              <!-- Success branch -->
+              <div class="col-12 border-start ps-3 mt-2 d-none" id="succRow">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label text-success">{{ _('Success → Device') }}</label>
+                    <select name="succ_device" class="form-select"></select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-success">{{ _('Topic / Channel') }}</label>
+                    <select name="succ_topic" class="form-select" disabled></select>
+                  </div>
+                  <div class="col-md-2 d-none" id="succCmpCol"></div>
+                  <div class="col-md-4" id="succValCol">
+                    <label class="form-label text-success">{{ _('Command / Payload') }}</label>
+                    <input name="succ_command" class="form-control" disabled>
+                  </div>
                 </div>
-                <div class="col-md-4">
-                  <label class="form-label">{{ _('Function') }}</label>
-                  <select name="eval_error_fn" class="form-select" disabled></select>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">{{ _('Args (JSON)') }}</label>
-                  <input name="eval_error_args" class="form-control" disabled>
+              </div>
+
+              <!-- Error branch -->
+              <div class="col-12 border-start ps-3 mt-2 d-none" id="errRow">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label text-danger">{{ _('Error → Device') }}</label>
+                    <select name="err_device" class="form-select"></select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label text-danger">{{ _('Topic / Channel') }}</label>
+                    <select name="err_topic" class="form-select" disabled></select>
+                  </div>
+                  <div class="col-md-2 d-none" id="errCmpCol"></div>
+                  <div class="col-md-4" id="errValCol">
+                    <label class="form-label text-danger">{{ _('Command / Payload') }}</label>
+                    <input name="err_command" class="form-control" disabled>
+                  </div>
                 </div>
               </div>
 
@@ -157,6 +165,7 @@
                 <input class="form-check-input" type="checkbox" id="enabledChk" name="enabled" checked>
                 <label class="form-check-label" for="enabledChk">{{ _('Enabled') }}</label>
               </div>
+
             </div><!-- /row -->
           </div><!-- /modal-body -->
 
@@ -173,4 +182,8 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/settings/actions.js') }}"></script>
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]')
+          .forEach(el => new bootstrap.Tooltip(el));
+</script>
 {% endblock %}
