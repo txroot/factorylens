@@ -4,21 +4,20 @@
 <h2 class="mt-4 fw-bold">{{ _('Actions') }}</h2>
 
 {% if not agent_ok %}
-  <!-- Empty‑state – no Action Agent device -->
+  <!-- Empty-state – no Action Agent device -->
   <section class="d-flex flex-column align-items-center justify-content-center" style="height:460px">
     <img src="{{ url_for('static', filename='img/actions/undraw_accept-tasks.svg') }}"
          class="mb-4" style="max-width:260px" alt="">
     <h4 class="text-secondary mb-2">{{ _('No actions configured') }}</h4>
     <p class="text-muted text-center" style="max-width:420px">
-      {{ _('You need to add & enable an “Action Agent” device first.') }}<br>
+      {{ _('You need to add & enable an “Action Agent” device first.') }}<br>
       <a href="{{ url_for('settings.devices_page') }}" class="fw-semibold">{{ _('Open Device Manager') }}</a>
     </p>
   </section>
 
 {% else %}
   <p class="mb-3 text-muted">
-    {{ _('Create simple <strong>IF → THEN</strong> rules that react to device events.')}} <br>
-    {{ _('All comparisons & valid payloads are auto‑suggested from each device model.')|safe }}
+    {{ _('Create simple <strong>IF → THEN → EVALUATE</strong> rules that react to device events.')|safe }}
   </p>
 
   <div class="d-flex justify-content-end mb-2">
@@ -68,48 +67,89 @@
 
               <!-- ── Trigger row ── -->
               <div class="col-12">
-                <h6 class="mt-2 mb-1">{{ _('IF (device event)') }}</h6>
+                <h6 class="mt-2 mb-1">{{ _('IF (device event)') }}</h6>
               </div>
-
               <div class="col-md-4">
                 <label class="form-label">{{ _('Device') }} *</label>
                 <select name="trigger_device" class="form-select" required></select>
               </div>
-
               <div class="col-md-4">
                 <label class="form-label">{{ _('Topic / Channel') }} *</label>
                 <select name="trigger_topic" class="form-select" required disabled></select>
               </div>
-
               <div class="col-md-2 d-none" id="triggerCmpCol">
                 <label class="form-label">{{ _('Cmp.') }}</label>
                 <select name="trigger_cmp" class="form-select"></select>
               </div>
-
               <div class="col-md-2" id="triggerValCol">
                 <label class="form-label">{{ _('Value') }} *</label>
-                <!-- will be replaced by <select> when enum -->
                 <input name="trigger_value" class="form-control" required disabled>
               </div>
 
-              <!-- ── Result row ── -->
+              <!-- ── THEN row ── -->
               <div class="col-12 pt-2">
-                <h6 class="mb-1">{{ _('THEN (send command)') }}</h6>
+                <h6 class="mb-1">{{ _('THEN (send command)') }}</h6>
               </div>
-
               <div class="col-md-4">
                 <label class="form-label">{{ _('Device') }} *</label>
                 <select name="result_device" class="form-select" required></select>
               </div>
-
               <div class="col-md-4">
                 <label class="form-label">{{ _('Topic / Channel') }} *</label>
                 <select name="result_topic" class="form-select" required disabled></select>
               </div>
-
-              <div class="col-md-4" id="resultCmdCol">
+              <div class="col-md-2 d-none" id="resultCmpCol">
+                <label class="form-label">{{ _('Cmp.') }}</label>
+                <select name="result_cmp" class="form-select"></select>
+              </div>
+              <div class="col-md-2" id="resultValCol">
                 <label class="form-label">{{ _('Command / Payload') }} *</label>
                 <input name="result_command" class="form-control" required disabled>
+              </div>
+
+              <!-- ── EVALUATE row ── -->
+              <div class="col-12 pt-2"><h6>{{ _('EVALUATE') }}</h6></div>
+              <div class="col-12 form-check">
+                <input class="form-check-input" type="radio" name="evaluate" id="eval_ignore" value="ignore" checked>
+                <label class="form-check-label" for="eval_ignore">{{ _('Ignore result') }}</label>
+              </div>
+              <div class="col-md-6 form-check">
+                <input class="form-check-input" type="radio" name="evaluate" id="eval_success" value="success">
+                <label class="form-check-label" for="eval_success">{{ _('On Success') }}</label>
+              </div>
+              <div class="col-md-6 form-check">
+                <input class="form-check-input" type="radio" name="evaluate" id="eval_error" value="error">
+                <label class="form-check-label" for="eval_error">{{ _('On Error') }}</label>
+              </div>
+
+              <div id="successConfig" class="row g-3 d-none">
+                <div class="col-md-4">
+                  <label class="form-label">{{ _('Device') }}</label>
+                  <select name="eval_success_device" class="form-select" disabled></select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">{{ _('Function') }}</label>
+                  <select name="eval_success_fn" class="form-select" disabled></select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">{{ _('Args (JSON)') }}</label>
+                  <input name="eval_success_args" class="form-control" disabled>
+                </div>
+              </div>
+
+              <div id="errorConfig" class="row g-3 d-none">
+                <div class="col-md-4">
+                  <label class="form-label">{{ _('Device') }}</label>
+                  <select name="eval_error_device" class="form-select" disabled></select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">{{ _('Function') }}</label>
+                  <select name="eval_error_fn" class="form-select" disabled></select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">{{ _('Args (JSON)') }}</label>
+                  <input name="eval_error_args" class="form-control" disabled>
+                </div>
               </div>
 
               <!-- enabled toggle -->
@@ -117,9 +157,8 @@
                 <input class="form-check-input" type="checkbox" id="enabledChk" name="enabled" checked>
                 <label class="form-check-label" for="enabledChk">{{ _('Enabled') }}</label>
               </div>
-
             </div><!-- /row -->
-          </div><!-- /modal‑body -->
+          </div><!-- /modal-body -->
 
           <div class="modal-footer">
             <button class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
