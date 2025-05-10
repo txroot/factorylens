@@ -3,7 +3,9 @@
 {% extends "layouts/dash.hbs" %}
 
 {% block content %}
-<h2 class="mt-4 fw-bold">{{ _('Actions') }}</h2>
+<h2 class="mt-4 fw-bold">
+  <i class="ti ti-list-check me-1"></i> {{ _('Actions') }}
+</h2>
 
 {% if not agent_ok %}
   <section class="d-flex flex-column align-items-center justify-content-center" style="height:460px">
@@ -15,7 +17,6 @@
       <a href="{{ url_for('settings.devices_page') }}" class="fw-semibold">{{ _('Open Device Manager') }}</a>
     </p>
   </section>
-
 {% else %}
   <p class="mb-3 text-muted">
     {{ _('Create <strong>IF → THEN → EVALUATE</strong> rules that react to device events.')|safe }}
@@ -31,9 +32,9 @@
     <table id="actionsTable" class="table table-hover align-middle">
       <thead class="table-light">
         <tr>
-          <th>{{ _('Name') }}</th>
-          <th style="width:35%">{{ _('Description') }}</th>
-          <th class="text-center">{{ _('Enabled') }}</th>
+          <th><i class="ti ti-tag me-1"></i>{{ _('Name') }}</th>
+          <th style="width:35%"><i class="ti ti-text me-1"></i>{{ _('Description') }}</th>
+          <th class="text-center"><i class="ti ti-toggle-left me-1"></i>{{ _('Enabled') }}</th>
           <th style="width:100px"></th>
         </tr>
       </thead>
@@ -48,7 +49,7 @@
 
         <div class="modal-header">
           <h5 class="modal-title">
-            <span id="modalTitle">{{ _('New Action') }}</span>
+            <i class="ti ti-pencil me-1"></i><span id="modalTitle">{{ _('New Action') }}</span>
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -59,192 +60,91 @@
 
               <!-- meta -->
               <div class="col-12">
-                <label class="form-label">{{ _('Name') }} *</label>
+                <label class="form-label">
+                  <i class="ti ti-tag me-1"></i>{{ _('Name') }} *
+                  <button type="button" class="btn ms-2 help-btn"
+                          data-field="name" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas">
+                    <i class="ti ti-info-circle"></i>
+                  </button>
+                </label>
                 <input name="name" class="form-control" required>
                 <div class="invalid-feedback">{{ _('Required') }}</div>
+                <small class="form-text text-muted hint" data-hint-for="name"></small>
               </div>
               <div class="col-12">
-                <label class="form-label">{{ _('Description') }}</label>
+                <label class="form-label">
+                  <i class="ti ti-align-justified me-1"></i>{{ _('Description') }}
+                  <button type="button" class="btn ms-2 help-btn"
+                          data-field="description" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas">
+                    <i class="ti ti-info-circle"></i>
+                  </button>
+                </label>
                 <textarea name="description" class="form-control" rows="2"></textarea>
+                <small class="form-text text-muted hint" data-hint-for="description"></small>
               </div>
 
-              <!-- IF step -->
-              <div class="col-12">
-                <h6 class="mt-4 mb-1">{{ _('IF') }} <small class="text-muted">{{ _('incoming event') }}</small></h6>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">{{ _('Device') }} *</label>
-                <select name="trigger_device" class="form-select" required></select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">
-                  <i class="ti ti-rotate-clockwise me-1"></i> {{ _('Event Topic') }} *
-                </label>
-                <select name="trigger_event_topic" class="form-select" required disabled></select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">
-                  <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }} *
-                </label>
-                <select name="trigger_topic" class="form-select" required disabled></select>
-              </div>
-              <div class="col-md-2 d-none" id="triggerCmpCol"></div>
-              <div class="col-md-2" id="triggerValCol">
-                <label class="form-label">{{ _('Value') }} *</label>
-                <input name="trigger_value" class="form-control" required disabled>
-              </div>
 
-              <!-- custom poll interval -->
-              <div class="row g-3 mt-2 custom-poll d-none">
-                <div class="col-md-4 offset-md-3">
-                  <label class="form-check-label">
-                    <input type="checkbox" id="triggerPollChk" class="form-check-input me-1">
-                    {{ _('Set custom poll interval') }}
+                <!-- IF step -->
+                <div class="col-12">
+                  <h6 class="mt-4 mb-1">
+                    <span class="badge bg-dark me-2">IF</span>
+                    <small class="text-muted">{{ _('incoming event') }}</small>
+                    <button type="button" class="btn ms-2 help-btn"
+                            data-field="trigger_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas">
+                      <i class="ti ti-info-circle"></i>
+                    </button>
+                  </h6>
+                </div>
+                <div class="col-md-3">
+                  <i class="ti ti-device-laptop text-muted ms-1 help-btn" data-field="trigger_device" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                  <label class="form-label">
+                    {{ _('Device') }} *
                   </label>
+                  <select name="trigger_device" class="form-select" required></select>
+                  <small class="form-text text-muted hint" data-hint-for="trigger_device"></small>
                 </div>
-                <div class="col-md-2">
-                  <input type="number" name="trigger_poll_value" class="form-control" min="0" disabled>
-                </div>
-                <div class="col-md-2">
-                  <select name="trigger_poll_unit" class="form-select" disabled>
-                    <option value="ms">ms</option>
-                    <option value="sec">s</option>
-                    <option value="min">m</option>
-                    <option value="hour">h</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- THEN step -->
-              <div class="col-12 pt-4 d-flex align-items-center">
-                <h6 class="mb-0">{{ _('THEN') }} 
-                  <small class="text-muted">{{ _('run command') }}</small>
-                </h6>
-                <small class="ms-3 d-inline-flex align-items-center" data-bs-toggle="tooltip"
-                       title="{{ _('Ignore input-type filtering for this THEN node') }}">
-                  <input type="checkbox" class="form-check-input me-1" id="ignoreInputChk">
-                  <label for="ignoreInputChk" class="mb-0 small">{{ _('Ignore input') }}</label>
-                </small>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">{{ _('Device') }} *</label>
-                <select name="result_device" class="form-select" required></select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">
-                  <i class="ti ti-terminal me-1"></i> {{ _('Command Topic') }} *
-                </label>
-                <select name="result_event_topic" class="form-select" required disabled></select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">
-                  <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }} *
-                </label>
-                <select name="result_topic" class="form-select" required disabled></select>
-              </div>
-              <div class="col-md-2 d-none" id="resultCmpCol"></div>
-              <div class="col-md-4" id="resultValCol">
-                <label class="form-label">{{ _('Payload') }} *</label>
-                <input name="result_command" class="form-control" required disabled>
-              </div>
-
-              <!-- custom timeout for THEN -->
-              <div class="row g-3 mt-2 custom-timeout d-none">
-                <div class="col-md-4 offset-md-3">
-                  <label class="form-check-label">
-                    <input type="checkbox" id="resultTimeoutChk" class="form-check-input me-1">
-                    {{ _('Set custom timeout') }}
+                <div class="col-md-4">
+                  <label class="form-label">
+                    <i class="ti ti-rotate-clockwise me-1"></i> {{ _('Event') }} *
+                    <i class="ti ti-info-circle text-muted ms-1 help-btn" 
+                      data-field="trigger_event_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
                   </label>
+                  <select name="trigger_event_topic" class="form-select" required disabled></select>
+                  <small class="form-text text-muted hint" data-hint-for="trigger_event_topic"></small>
                 </div>
-                <div class="col-md-2">
-                  <input type="number" name="result_timeout_value" class="form-control" min="0" disabled>
-                </div>
-                <div class="col-md-2">
-                  <select name="result_timeout_unit" class="form-select" disabled>
-                    <option value="ms">ms</option>
-                    <option value="sec">s</option>
-                    <option value="min">m</option>
-                    <option value="hour">h</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- EVALUATE step -->
-              <div class="col-12 pt-4">
-                <h6 class="mb-1">{{ _('EVALUATE') }}
-                  <small class="text-muted">{{ _('after THEN finishes') }}</small>
-                </h6>
-              </div>
-              <div class="col-12">
-                <div class="btn-group" role="group">
-                  <input type="radio" class="btn-check" name="eval_mode" id="evalIgnore" value="ignore" checked>
-                  <label class="btn btn-outline-dark" for="evalIgnore"
-                         data-bs-toggle="tooltip"
-                         title="{{ _('Do nothing after THEN (default)') }}">
-                    {{ _('Ignore') }}
+                <div class="col-md-3 visually-hidden">
+                  <label class="form-label">
+                    <i class="ti ti-checks me-1"></i> {{ _('Poll Topic') }} *
+                    <i class="ti ti-info-circle text-muted ms-1 help-btn" 
+                      data-field="trigger_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
                   </label>
-
-                  <input type="radio" class="btn-check" name="eval_mode" id="evalSuccess" value="success">
-                  <label class="btn btn-outline-dark" for="evalSuccess"
-                         data-bs-toggle="tooltip"
-                         title="{{ _('Run branch only when THEN succeeded') }}">
-                    {{ _('On Success') }}
-                  </label>
-
-                  <input type="radio" class="btn-check" name="eval_mode" id="evalError" value="error">
-                  <label class="btn btn-outline-dark" for="evalError"
-                         data-bs-toggle="tooltip"
-                         title="{{ _('Run branch only when THEN failed') }}">
-                    {{ _('On Error') }}
-                  </label>
-
-                  <input type="radio" class="btn-check" name="eval_mode" id="evalBoth" value="both">
-                  <label class="btn btn-outline-dark" for="evalBoth"
-                         data-bs-toggle="tooltip"
-                         title="{{ _('Configure both success and error branches') }}">
-                    {{ _('Both') }}
-                  </label>
+                  <select name="trigger_topic" class="form-select" required disabled></select>
+                  <small class="form-text text-muted hint" data-hint-for="trigger_topic"></small>
                 </div>
-              </div>
-
-              <!-- Success branch -->
-              <div class="col-12 border-start ps-3 mt-3 d-none" id="succRow">
-                <div class="row g-3">
-                  <div class="col-md-3">
-                    <label class="form-label text-success">{{ _('Device') }}</label>
-                    <select name="succ_device" class="form-select"></select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label text-success">
-                      <i class="ti ti-terminal me-1"></i> {{ _('Command Topic') }}
-                    </label>
-                    <select name="succ_event_topic" class="form-select" disabled></select>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label text-success">
-                      <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }}
-                    </label>
-                    <select name="succ_topic" class="form-select" disabled></select>
-                  </div>
-                  <div class="col-md-2 d-none" id="succCmpCol"></div>
-                  <div class="col-md-2" id="succValCol">
-                    <label class="form-label text-success">{{ _('Payload') }}</label>
-                    <input name="succ_command" class="form-control" disabled>
-                  </div>
+                <div class="col-md-2 d-none" id="triggerCmpCol"></div>
+                <div class="col-md-2" id="triggerValCol">
+                  <label class="form-label">
+                    {{ _('Value') }} *
+                    <i class="ti ti-hash text-muted ms-1 help-btn" 
+                      data-field="trigger_value" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                  </label>
+                  <input name="trigger_value" class="form-control" required disabled>
+                  <small class="form-text text-muted hint" data-hint-for="trigger_value"></small>
                 </div>
-                <!-- custom timeout for success -->
-                <div class="row g-3 mt-2 custom-timeout-succ d-none">
+
+                <!-- custom poll interval (shown only when schema.poll_topic ≠ "") -->
+                <div class="row g-3 mt-2 custom-poll d-none" data-poll-row>
                   <div class="col-md-4 offset-md-3">
                     <label class="form-check-label">
-                      <input type="checkbox" id="succTimeoutChk" class="form-check-input me-1">
-                      {{ _('Set custom timeout') }}
+                      <input type="checkbox" id="triggerPollChk" class="form-check-input me-1">
+                      {{ _('Set custom poll interval') }}
                     </label>
                   </div>
                   <div class="col-md-2">
-                    <input type="number" name="succ_timeout_value" class="form-control" min="0" disabled>
+                    <input type="number" name="trigger_poll_value" class="form-control" min="0" disabled>
                   </div>
                   <div class="col-md-2">
-                    <select name="succ_timeout_unit" class="form-select" disabled>
+                    <select name="trigger_poll_unit" class="form-select" disabled>
                       <option value="ms">ms</option>
                       <option value="sec">s</option>
                       <option value="min">m</option>
@@ -252,46 +152,69 @@
                     </select>
                   </div>
                 </div>
-              </div>
 
-              <!-- Error branch -->
-              <div class="col-12 border-start ps-3 mt-3 d-none" id="errRow">
-                <div class="row g-3">
-                  <div class="col-md-3">
-                    <label class="form-label text-danger">{{ _('Device') }}</label>
-                    <select name="err_device" class="form-select"></select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label text-danger">
-                      <i class="ti ti-terminal me-1"></i> {{ _('Command Topic') }}
-                    </label>
-                    <select name="err_event_topic" class="form-select" disabled></select>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label text-danger">
-                      <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }}
-                    </label>
-                    <select name="err_topic" class="form-select" disabled></select>
-                  </div>
-                  <div class="col-md-2 d-none" id="errCmpCol"></div>
-                  <div class="col-md-2" id="errValCol">
-                    <label class="form-label text-danger">{{ _('Payload') }}</label>
-                    <input name="err_command" class="form-control" disabled>
-                  </div>
+                <!-- THEN step -->
+                <div class="col-12 pt-4 d-flex align-items-center">
+                  <h6 class="mb-0">
+                    <span class="badge bg-dark me-2">THEN</span>
+                    <small class="text-muted">{{ _('run command') }}</small>
+                  </h6>
+                  <small class="ms-3 d-inline-flex align-items-center" data-bs-toggle="tooltip"
+                        title="{{ _('Ignore input-type filtering for this THEN node') }}">
+                    <input type="checkbox" class="form-check-input me-1" id="ignoreInputChk">
+                    <label for="ignoreInputChk" class="mb-0 small">{{ _('Ignore input') }}</label>
+                  </small>
                 </div>
-                <!-- custom timeout for error -->
-                <div class="row g-3 mt-2 custom-timeout-err d-none">
+                <div class="col-md-3">
+                  <i class="ti ti-device-laptop text-muted ms-1 help-btn" data-field="result_device" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                  <label class="form-label">
+                    {{ _('Device') }} *
+                  </label>
+                  <select name="result_device" class="form-select" required></select>
+                  <small class="form-text text-muted hint" data-hint-for="result_device"></small>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">
+                    <i class="ti ti-terminal me-1"></i> {{ _('Command') }} *
+                    <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                      data-field="result_event_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                  </label>
+                  <select name="result_event_topic" class="form-select" required disabled></select>
+                  <small class="form-text text-muted hint" data-hint-for="result_event_topic"></small>
+                </div>
+                <div class="col-md-3 visually-hidden">
+                  <label class="form-label">
+                    <i class="ti ti-checks me-1"></i> {{ _('Result Topic') }} *
+                    <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                      data-field="result_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                  </label>
+                  <select name="result_topic" class="form-select" required disabled></select>
+                  <small class="form-text text-muted hint" data-hint-for="result_topic"></small>
+                </div>
+                <div class="col-md-2 d-none" id="resultCmpCol"></div>
+                <div class="col-md-4" id="resultValCol">
+                  <label class="form-label">
+                    {{ _('Payload') }} *
+                    <i class="ti ti-pill text-muted ms-1 help-btn"
+                      data-field="result_command" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                  </label>
+                  <input name="result_command" class="form-control" required disabled>
+                  <small class="form-text text-muted hint" data-hint-for="result_command"></small>
+                </div>
+
+                <!-- custom timeout for THEN -->
+                <div class="row g-3 mt-2 custom-timeout d-none" data-timeout-row>
                   <div class="col-md-4 offset-md-3">
                     <label class="form-check-label">
-                      <input type="checkbox" id="errTimeoutChk" class="form-check-input me-1">
+                      <input type="checkbox" id="resultTimeoutChk" class="form-check-input me-1">
                       {{ _('Set custom timeout') }}
                     </label>
                   </div>
                   <div class="col-md-2">
-                    <input type="number" name="err_timeout_value" class="form-control" min="0" disabled>
+                    <input type="number" name="result_timeout_value" class="form-control" min="0" disabled>
                   </div>
                   <div class="col-md-2">
-                    <select name="err_timeout_unit" class="form-select" disabled>
+                    <select name="result_timeout_unit" class="form-select" disabled>
                       <option value="ms">ms</option>
                       <option value="sec">s</option>
                       <option value="min">m</option>
@@ -299,29 +222,198 @@
                     </select>
                   </div>
                 </div>
-              </div>
+
+                <!-- EVALUATE step -->
+                <div class="col-12 pt-4">
+                  <h6 class="mb-1">
+                    <span class="badge bg-dark me-2">EVALUATE</span>
+                    <small class="text-muted">{{ _('after THEN finishes') }}</small>
+                    <button type="button" class="btn ms-2 help-btn"
+                            data-field="eval_mode" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas">
+                      <i class="ti ti-info-circle"></i>
+                    </button>
+                  </h6>
+                </div>
+                <div class="col-12">
+                  <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="eval_mode" id="evalIgnore" value="ignore" checked>
+                    <label class="btn" for="evalIgnore" data-bs-toggle="tooltip"
+                          title="{{ _('Do nothing after THEN (default)') }}">
+                      <i class="ti ti-ban me-1"></i>{{ _('Ignore') }}
+                    </label>
+
+                    <input type="radio" class="btn-check" name="eval_mode" id="evalSuccess" value="success">
+                    <label class="btn" for="evalSuccess" data-bs-toggle="tooltip"
+                          title="{{ _('Run branch only when THEN succeeded') }}">
+                      <i class="ti ti-check me-1"></i>{{ _('On Success') }}
+                    </label>
+
+                    <input type="radio" class="btn-check" name="eval_mode" id="evalError" value="error">
+                    <label class="btn" for="evalError" data-bs-toggle="tooltip"
+                          title="{{ _('Run branch only when THEN failed') }}">
+                      <i class="ti ti-x me-1"></i>{{ _('On Error') }}
+                    </label>
+
+                    <input type="radio" class="btn-check" name="eval_mode" id="evalBoth" value="both">
+                    <label class="btn" for="evalBoth" data-bs-toggle="tooltip"
+                          title="{{ _('Configure both success and error branches') }}">
+                      <i class="ti ti-arrows-split me-1"></i>{{ _('Both') }}
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Success branch -->
+                <div class="col-12 border-start ps-3 mt-3 d-none" id="succRow">
+                  <div class="row g-3">
+                    <div class="col-md-3">
+                      <label class="form-label text-success">
+                        <i class="ti ti-device-laptop me-1"></i>{{ _('Device') }}
+                        <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="succ_device" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                      </label>
+                      <select name="succ_device" class="form-select"></select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label text-success">
+                        <i class="ti ti-terminal me-1"></i>{{ _('Command') }}
+                        <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="succ_event_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                      </label>
+                      <select name="succ_event_topic" class="form-select" disabled></select>
+                    </div>
+                    <div class="col-md-3 visually-hidden">
+                      <label class="form-label text-success">
+                        <i class="ti ti-checks me-1"></i>{{ _('Result Topic') }}
+                        <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="succ_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                      </label>
+                      <select name="succ_topic" class="form-select" disabled></select>
+                    </div>
+                    <div class="col-md-2 d-none" id="succCmpCol"></div>
+                    <div class="col-md-2" id="succValCol">
+                      <label class="form-label text-success">{{ _('Payload') }}</label>
+                      <input name="succ_command" class="form-control" disabled>
+                    </div>
+                  </div>
+                  <!-- custom timeout for success -->
+                  <div class="row g-3 mt-2 custom-timeout-succ d-none">
+                    <div class="col-md-4 offset-md-3">
+                      <label class="form-check-label">
+                        <input type="checkbox" id="succTimeoutChk" class="form-check-input me-1">
+                        {{ _('Set custom timeout') }}
+                      </label>
+                    </div>
+                    <div class="col-md-2">
+                      <input type="number" name="succ_timeout_value" class="form-control" min="0" disabled>
+                    </div>
+                    <div class="col-md-2">
+                      <select name="succ_timeout_unit" class="form-select" disabled>
+                        <option value="ms">ms</option>
+                        <option value="sec">s</option>
+                        <option value="min">m</option>
+                        <option value="hour">h</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Error branch -->
+                <div class="col-12 border-start ps-3 mt-3 d-none" id="errRow">
+                  <div class="row g-3">
+                    <div class="col-md-3">
+                      <label class="form-label text-danger">
+                        <i class="ti ti-device-laptop me-1"></i>{{ _('Device') }}
+                        <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="err_device" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                      </label>
+                      <select name="err_device" class="form-select"></select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label text-danger">
+                        <i class="ti ti-terminal me-1"></i>{{ _('Command') }}
+                        <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="err_event_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                      </label>
+                      <select name="err_event_topic" class="form-select" disabled></select>
+                    </div>
+                    <div class="col-md-3 visually-hidden">
+                      <label class="form-label text-danger">
+                        <i class="ti ti-checks me-1"></i>{{ _('Event') }}
+                        <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="err_topic" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                      </label>
+                      <select name="err_topic" class="form-select" disabled></select>
+                    </div>
+                    <div class="col-md-2 d-none" id="errCmpCol"></div>
+                    <div class="col-md-2" id="errValCol">
+                      <label class="form-label text-danger">{{ _('Payload') }}</label>
+                      <input name="err_command" class="form-control" disabled>
+                    </div>
+                  </div>
+                  <!-- custom timeout for error -->
+                  <div class="row g-3 mt-2 custom-timeout-err d-none">
+                    <div class="col-md-4 offset-md-3">
+                      <label class="form-check-label">
+                        <input type="checkbox" id="errTimeoutChk" class="form-check-input me-1">
+                        {{ _('Set custom timeout') }}
+                      </label>
+                    </div>
+                    <div class="col-md-2">
+                      <input type="number" name="err_timeout_value" class="form-control" min="0" disabled>
+                    </div>
+                    <div class="col-md-2">
+                      <select name="err_timeout_unit" class="form-select" disabled>
+                        <option value="ms">ms</option>
+                        <option value="sec">s</option>
+                        <option value="min">m</option>
+                        <option value="hour">h</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+              <span  class="mt-3"></span>
+              <hr>
 
               <!-- enabled toggle -->
-              <div class="col-12 form-switch mt-4">
+              <div class="col-12 form-switch mt-3 ms-2">
                 <input class="form-check-input" type="checkbox" id="enabledChk" name="enabled" checked>
-                <label class="form-check-label" for="enabledChk">{{ _('Enabled') }}</label>
+                <label class="form-check-label" for="enabledChk">
+                  &nbsp;{{ _('Enabled') }}
+                </label>
               </div>
 
             </div><!-- /.row -->
           </div><!-- /.modal-body -->
 
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              {{ _('Cancel') }}
+            <button type="button" class="btn btn-dark" data-bs-dismiss="modal">
+              <i class="ti ti-x me-1"></i>{{ _('Cancel') }}
             </button>
             <button type="button" id="saveActionBtn" class="btn btn-primary">
-              <i class="ti ti-save me-1"></i> {{ _('Save') }}
+              <i class="ti ti-check me-1"></i>{{ _('Save') }}
             </button>
           </div>
         </form>
       </div>
     </div>
   </div>
+
+  <!-- Help Offcanvas -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" aria-labelledby="helpOffcanvasLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="helpOffcanvasLabel">
+        <i class="ti ti-info-circle me-1"></i>{{ _('Field Help') }}
+      </h5>
+      <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      <h6 id="helpLabel" class="fw-bold"></h6>
+      <p id="helpExplanation" class="small text-muted"></p>
+      <p id="helpHint" class="small text-info"></p>
+    </div>
+  </div>
+
 {% endif %}
 {% endblock %}
 
@@ -330,5 +422,20 @@
 <script>
   document.querySelectorAll('[data-bs-toggle="tooltip"]')
           .forEach(el => new bootstrap.Tooltip(el));
+
+  // Wire help buttons to populate offcanvas from dataset.meta
+  document.querySelectorAll('.help-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = btn.getAttribute('data-field');
+      const input = document.querySelector(`[name="${field}"]`);
+      let metaJson = input?.selectedOptions?.[0]?.dataset.meta
+                  || input?.dataset?.meta
+                  || '{}';
+      const meta = JSON.parse(metaJson);
+      document.getElementById('helpLabel').textContent       = meta.label || field;
+      document.getElementById('helpExplanation').textContent = meta.explanation || '';
+      document.getElementById('helpHint').textContent        = meta.hint || '';
+    });
+  });
 </script>
 {% endblock %}
