@@ -191,6 +191,12 @@ function adaptInput(prefix) {
   // enum/bool
   if (m.type==="enum"||m.type==="bool") {
     const opts = m.type==="bool"?["true","false"]:m.values;
+
+    // Is this the result node AND the trigger has the same type?
+    const sameAsIf = (prefix==="result"
+      && outType                     // set earlier by trigger
+      && outType === m.type);        // compatible
+    
     vCol.innerHTML = `
       <label class="form-label">
         ${prefix==="trigger" ? "Value" : "Payload"} *
@@ -198,6 +204,7 @@ function adaptInput(prefix) {
       <select name="${prefix==="trigger" ? "trigger_value" : `${prefix}_command`}"
               class="form-select" required>
         <option disabled selected value="">—</option>
+        ${sameAsIf ? `<option value="$IF">{{ _('Same as IF') }}</option>` : ''}
         ${opts.map(v=>`<option value="${v}">${m.display?.[v]||v}</option>`).join("")}
       </select>`;
     if (prefix==="trigger") { outType = m.type; buildResultDevices(); }
@@ -513,7 +520,10 @@ f.addEventListener("change", e => {
   else if (n==="err_device")          loadTopics(e.target.value, "err");
   else if (n==="err_event_topic")     adaptInput("err");
 });
-ignoreInputChk.addEventListener("change", buildResultDevices);
+ignoreInputChk.addEventListener("change", () => {
+  outType = null;          // pretend no filtering → every command topic shows
+  buildResultDevices();
+});
 
 // ─── Save (create/update) ──────────────────────────────────────
 qs("#saveActionBtn").addEventListener("click", async () => {
@@ -590,14 +600,14 @@ qs("#saveActionBtn").addEventListener("click", async () => {
     toast("Saved");
   } else {
     let msg;
+    let payload;
     try {
-      const payload = await res.json();
+      payload = await res.clone().json();   // clone first if you want to try fallback
       msg = payload.message;
     } catch {
       msg = await res.text();
     }
     toast(msg || res.statusText, "danger");
-    return;
   }
 });
 

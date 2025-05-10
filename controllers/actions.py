@@ -67,11 +67,18 @@ def _validate_result(res: dict):
     topic  = res.get("topic")
     if dev_id is None or topic is None:
         abort(400, "Result needs device_id and topic")
+
     sch  = _topic_schema(dev_id)
     meta = (sch.get("command_topics") or {}).get(topic)
     if not meta:
         abort(400, f"Command topic “{topic}” not allowed for that device")
+
     cmd = str(res.get("command", ""))
+
+    # Allow $IF as a dynamic payload passthrough
+    if cmd == "$IF":
+        return
+
     if meta["type"] == "enum" and cmd not in meta["values"]:
         abort(400, f"Command “{cmd}” not valid for topic {topic}")
 
