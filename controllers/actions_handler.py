@@ -1,14 +1,48 @@
-# controllers/actions_handler.py
-
 import threading
 import time
 import json
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from threading import Event
 
 from flask import current_app as app
 from models.actions import Action as ActionModel
 from models.device  import Device
+
+
+# ——— Utility functions —————————————————————————————————————————————————————
+def _extract_event(raw: str) -> str:
+    """
+    If the payload is JSON with an "event" field, return that;
+    otherwise just return the raw string.
+    """
+    try:
+        j = json.loads(raw)
+        if isinstance(j, dict) and "event" in j:
+            return str(j["event"])
+    except json.JSONDecodeError:
+        pass
+    return raw
+
+
+def _compare(raw: str, expected: str, op: str) -> bool:
+    """
+    Compare `raw` and `expected` using op.
+    If both parse as floats, do numeric compare; otherwise string compare.
+    """
+    try:
+        a = float(raw)
+        b = float(expected)
+    except ValueError:
+        a = raw
+        b = expected
+
+    if op == "==":  return a == b
+    if op == "!=":  return a != b
+    if op == "<":   return a <  b
+    if op == "<=":  return a <= b
+    if op == ">":   return a >  b
+    if op == ">=":  return a >= b
+    return False
 
 
 class ActionWrapper:
@@ -28,8 +62,8 @@ class ActionManager:
         self.flask_app = getattr(mqtt_client, "_userdata", None)
         self.interval  = status_interval
 
-        # pending result-waits: { action_id: { event, topic, expected_payload } }
-        self._pending: Dict[int, Dict[str, any]] = {}
+        # pending result-waits: action_id → { event, topic, expected }
+        self._pending: Dict[int, Dict[str, Any]] = {}
         self._lock    = threading.Lock()
 
         self.actions: Dict[int, ActionWrapper] = {}
@@ -39,6 +73,7 @@ class ActionManager:
         threading.Thread(target=self._status_loop, daemon=True).start()
 
     def _load_actions(self):
+        """Load all Actions from the DB and wrap them."""
         with self.flask_app.app_context():
             self.actions.clear()
             for m in ActionModel.query.all():
@@ -64,13 +99,10 @@ class ActionManager:
         """Every interval seconds emit a summary and publish to `actions/status`."""
         while True:
             with self.flask_app.app_context():
-                summary = []
-                for act in self.actions.values():
-                    summary.append({
-                        "id":    act.id,
-                        "name":  act.name,
-                        "state": act.state
-                    })
+                summary = [
+                    {"id": act.id, "name": act.name, "state": act.state}
+                    for act in self.actions.values()
+                ]
                 app.logger.info("🕒 actions/status → %s", summary)
                 self.client.publish("actions/status", json.dumps(summary))
             time.sleep(self.interval)
@@ -84,14 +116,10 @@ class ActionManager:
     def on_message(self, client, userdata, msg):
         """Universal MQTT handler."""
         with self.flask_app.app_context():
-            raw = msg.payload.decode()
-            try:
-                j = json.loads(raw)
-                payload = str(j.get("event", raw)) if isinstance(j, dict) else raw
-            except:
-                payload = raw
-            topic = msg.topic
-            log   = app.logger
+            raw     = msg.payload.decode()
+            payload = _extract_event(raw)
+            topic   = msg.topic
+            log     = app.logger
 
             # 1) Check any pending THEN-result
             with self._lock:
@@ -105,7 +133,7 @@ class ActionManager:
                 if act.state != "idle":
                     continue
 
-                if_node = next((n for n in act.chain if n.get("source")=="io"), None)
+                if_node = next((n for n in act.chain if n.get("source") == "io"), None)
                 if not if_node:
                     continue
 
@@ -113,11 +141,12 @@ class ActionManager:
                 if not dev:
                     continue
 
-                full_if = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{if_node['topic']}"
+                full_if      = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{if_node['topic']}"
                 expected_val = str(if_node["match"]["value"])
+                cmp_op       = if_node.get("cmp", "==")
 
-                log.debug(f"Checking IF #{act.id} {act.name!r}: {full_if}@{expected_val!r}")
-                if topic == full_if and payload == expected_val:
+                log.debug(f"Checking IF #{act.id} {act.name!r}: {full_if} {cmp_op} {expected_val!r}")
+                if topic == full_if and _compare(payload, expected_val, cmp_op):
                     log.info(f"🔥 IF triggered for '{act.name}' (#{act.id})")
                     # emit IF event
                     self.client.publish("actions/if/trigger", json.dumps({
@@ -131,7 +160,7 @@ class ActionManager:
     def _execute_then(self, act: ActionWrapper):
         """Perform THEN, wait on result_topic, then run evaluate branch."""
         with self.flask_app.app_context():
-            log = app.logger
+            log  = app.logger
             then = act.chain[1]
             dev  = Device.query.get(then["device_id"])
             if not dev:
@@ -152,20 +181,25 @@ class ActionManager:
             log.debug(f"→ [THEN] Pub {full_cmd} → {cmd!r}")
             self.client.publish(full_cmd, cmd)
 
-            # load schema’s expected result_payload
-            schema = dev.model.get_schema("topic").schema or {}
-            cmd_meta = schema.get("command_topics", {}).get(then["topic"], {})
-            expected = cmd_meta.get("result_payload", {}).get(cmd)
+            # determine expected payload & comparator
+            if "match" in then and "cmp" in then:
+                expected    = str(then["match"]["value"])
+                expected_op = then["cmp"]
+            else:
+                schema    = dev.model.get_schema("topic").schema or {}
+                cmd_meta  = schema.get("command_topics", {}).get(then["topic"], {})
+                expected  = cmd_meta.get("result_payload", {}).get(cmd)
+                expected_op = "=="
 
-            # do we have evaluate branches?
+            # collect evaluate branches
             branches = [n for n in act.chain[2:] if n.get("branch") in ("success","error")]
             if not branches:
+                # no EVALUATE → done
                 self._set_state(act, "success")
                 self._set_state(act, "idle")
                 return
 
-            # if no result_topic, treat as immediate success
-            res_topic = then.get("result_topic","")
+            res_topic = then.get("result_topic", "")
             if not res_topic:
                 log.debug("No result_topic → immediate success")
                 self._run_branch(act, "success")
@@ -174,9 +208,9 @@ class ActionManager:
                 return
 
             full_res = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{res_topic}"
-            timeout  = then.get("timeout",0)
-            unit     = then.get("timeout_unit","sec")
-            secs     = self._to_seconds(timeout,unit)
+            timeout  = then.get("timeout", 0)
+            unit     = then.get("timeout_unit", "sec")
+            secs     = self._to_seconds(timeout, unit)
             ev       = Event()
 
             with self._lock:
@@ -186,7 +220,7 @@ class ActionManager:
                     "expected": expected
                 }
 
-            log.debug(f"Waiting up to {secs}s for THEN-result on {full_res!r} == {expected!r}")
+            log.debug(f"Waiting up to {secs}s for THEN-result on {full_res!r} {expected_op} {expected!r}")
             got = ev.wait(secs)
 
             with self._lock:
@@ -194,9 +228,9 @@ class ActionManager:
 
             # emit THEN-result completion
             self.client.publish("actions/then/result", json.dumps({
-                "action_id":  act.id,
+                "action_id":    act.id,
                 "result_topic": full_res,
-                "matched":    got
+                "matched":      got
             }))
 
             if got:
@@ -208,7 +242,7 @@ class ActionManager:
                 self._run_branch(act, "error")
                 self._set_state(act, "error")
 
-            # finally go back to idle
+            # finally return to idle
             self._set_state(act, "idle")
 
     def _run_branch(self, act: ActionWrapper, branch: str):
@@ -228,7 +262,7 @@ class ActionManager:
                 cmd      = node["command"]
                 topic_evt = f"actions/evaluate/{branch}/command"
 
-                # emit branch‐command event
+                # emit branch-command event
                 self.client.publish(topic_evt, json.dumps({
                     "action_id": act.id,
                     "topic":     full_cmd,
@@ -240,22 +274,27 @@ class ActionManager:
     @staticmethod
     def _to_seconds(val: float, unit: str) -> float:
         return {
-            "ms":   val/1000,
+            "ms":   val / 1000,
             "sec":  val,
-            "min":  val*60,
-            "hour": val*3600
+            "min":  val * 60,
+            "hour": val * 3600
         }.get(unit, val)
 
 
-# singleton holder
+# ——— Singleton holder ———————————————————————————————————————————————————————
 _manager: Optional[ActionManager] = None
 
 
 def init_action_manager(mqtt_client, status_interval: float = 30.0) -> ActionManager:
+    """
+    Instantiate (or re-instantiate) the global ActionManager.
+    Call this once from your MQTT init.
+    """
     global _manager
     _manager = ActionManager(mqtt_client, status_interval=status_interval)
     return _manager
 
 
 def get_action_manager() -> Optional[ActionManager]:
+    """Return the previously-initialized ActionManager (or None)."""
     return _manager
