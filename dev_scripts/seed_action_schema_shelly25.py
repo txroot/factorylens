@@ -246,14 +246,14 @@ SHELLY_ACTION_SCHEMA = {
             "timeout_unit":  "sec",
             "result_topic":  "relay/0",
             "result_payload": {
-                "options:" [
+                "options": [
                     {
-                        "value": "on",
-                        "description": "Relay 1 is now on"
-                    },
-                    {
-                        "value": "off",
-                        "description": "Relay 1 is now off"
+                        "label":              "Relay 0 State",
+                        "tooltip":            "Current on/off state of relay 0",
+                        "hint":               "Use Evaluate to check on/off",
+                        "explanation":        "Indicates whether relay 0 is currently on or off",
+                        "type":               "enum",
+                        "values":             ["on","off"],
                     }
                 ]
             }
@@ -269,14 +269,14 @@ SHELLY_ACTION_SCHEMA = {
             "timeout_unit":  "sec",
             "result_topic":  "relay/1",
             "result_payload": {
-                "options:" [
+                "options": [
                     {
-                        "value": "on",
-                        "description": "Relay 1 is now on"
-                    },
-                    {
-                        "value": "off",
-                        "description": "Relay 1 is now off"
+                        "label":              "Relay 1 State",
+                        "tooltip":            "Current on/off state of relay 1",
+                        "hint":               "Use Evaluate to check on/off",
+                        "explanation":        "Indicates whether relay 1 is currently on or off",
+                        "type":               "enum",
+                        "values":             ["on","off"],
                     }
                 ]
             }

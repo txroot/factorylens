@@ -433,3 +433,6 @@ msgstr "Enabled"
 
 msgid "automations"
 msgstr "Automations"
+
+msgid "Result Payload Match Value"
+msgstr "Match Value for Result of the Then Command"

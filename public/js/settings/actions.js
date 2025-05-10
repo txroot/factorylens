@@ -258,6 +258,71 @@ function adaptInput(prefix) {
   });
 }
 
+async function adaptEvalMatch(prefix) {
+  const devId = +f[`${prefix}_device`].value;
+  const resTopic = f[`${prefix}_topic`].value;            // hidden result_topic
+  if (!devId || !resTopic) return;
+
+  // fetch that device's schema
+  const schema = await getSchema(devId);
+  const meta   = (schema.topics || {})[resTopic] || {};
+
+  const cmpCol   = qs(`#${prefix}CmpCol`);
+  const matchCol = qs(`#${prefix}MatchCol`);
+  const cmpSel   = f[`${prefix}_cmp`];
+  const valInp   = f[`${prefix}_match_value`];
+
+  // always enable the value input
+  valInp.disabled = false;
+
+  if (meta.type === "enum" || meta.type === "bool") {
+    // build a <select> of allowed values
+    matchCol.innerHTML = `
+      <label class="form-label text-${prefix==='succ'?'success':'danger'}">
+        {{ _('Match') }}
+      </label>
+      <select name="${prefix}_match_value" class="form-select">
+        <option disabled selected value="">—</option>
+        ${(meta.values || ["true","false"]).map(v=>
+          `<option value="${v}">${meta.display?.[v]||v}</option>`
+        ).join("")}
+      </select>`;
+    cmpCol.classList.add("d-none");
+  }
+  else if (meta.type === "number") {
+    // show comparator + numeric input
+    cmpCol.classList.remove("d-none");
+    cmpCol.innerHTML = `
+      <label class="form-label">{{ _('Cmp.') }}</label>
+      <select name="${prefix}_cmp" class="form-select">
+        ${(meta.comparators || ["<","<=","==","!="," >=",">"])
+          .map(c => `<option value="${c}">${c}</option>`).join("")}
+      </select>`;
+    matchCol.innerHTML = `
+      <label class="form-label">{{ _('Result Payload Match') }}</label>
+      <input name="${prefix}_match_value" type="number" class="form-control"
+             min="${meta.range?.[0]??''}" max="${meta.range?.[1]??''}" required>`;
+  }
+  else {
+    // free-text fallback
+    cmpCol.classList.add("d-none");
+    matchCol.innerHTML = `
+      <label class="form-label">{{ _('Result Payload Match') }}</label>
+      <input name="${prefix}_match_value" class="form-control" required>`;
+  }
+
+  // show both columns
+  cmpCol.classList.toggle("d-none", meta.type !== "number");
+  matchCol.parentElement.classList.remove("d-none");
+}
+
+// wire it up:
+f.addEventListener("change", e => {
+  const n = e.target.name;
+  if (n==="succ_device"  || n==="succ_topic") adaptEvalMatch("succ");
+  if (n==="err_device"   || n==="err_topic") adaptEvalMatch("err");
+});
+
 // ─── EVALUATE UI ────────────────────────────────────────────────
 const modeRadios = Array.from(f.querySelectorAll('input[name="eval_mode"]'));
 function updateEvalUI() {
@@ -345,11 +410,11 @@ qs("#actionsTable tbody").addEventListener("click", async e => {
   if (hasS) {
     const sb = branches.find(n => n.branch==="success");
     await buildEvalDevices("succ");
-    f.succ_device.value         = sb.device_id;
+    f.succ_device.value      = sb.device_id;
     await loadTopics(sb.device_id,"succ");
-    f.succ_event_topic.value    = sb.topic;
+    f.succ_event_topic.value = sb.topic;
     adaptInput("succ");
-    f.succ_command.value        = sb.command;
+    f.succ_command.value     = sb.command;
     if (typeof sb.timeout === "number" && sb.timeout > 0) {
       succTimeoutRow.classList.remove("d-none");
       succTimeoutChk.checked = true;
@@ -358,16 +423,21 @@ qs("#actionsTable tbody").addEventListener("click", async e => {
       f.succ_timeout_value.disabled = false;
       f.succ_timeout_unit.disabled  = false;
     }
+
+    // Set up the match UI then fill cmp & match_value
+    await adaptEvalMatch("succ");
+    f.succ_cmp.value             = sb.cmp;
+    f.succ_match_value.value     = sb.match.value;
   }
 
   if (hasE) {
     const eb = branches.find(n => n.branch==="error");
     await buildEvalDevices("err");
-    f.err_device.value         = eb.device_id;
+    f.err_device.value      = eb.device_id;
     await loadTopics(eb.device_id,"err");
-    f.err_event_topic.value    = eb.topic;
+    f.err_event_topic.value = eb.topic;
     adaptInput("err");
-    f.err_command.value        = eb.command;
+    f.err_command.value     = eb.command;
     if (typeof eb.timeout === "number" && eb.timeout > 0) {
       errTimeoutRow.classList.remove("d-none");
       errTimeoutChk.checked = true;
@@ -376,6 +446,11 @@ qs("#actionsTable tbody").addEventListener("click", async e => {
       f.err_timeout_value.disabled = false;
       f.err_timeout_unit.disabled  = false;
     }
+
+    // Set up the match UI then fill cmp & match_value
+    await adaptEvalMatch("err");
+    f.err_cmp.value             = eb.cmp;
+    f.err_match_value.value     = eb.match.value;
   }
 
   modal.show();
@@ -424,16 +499,20 @@ qs("#saveActionBtn").addEventListener("click", async () => {
     command:      f.succ_command.value,
     result_topic: f.succ_topic.value,
     timeout:      +f.succ_timeout_value.value || 0,
-    timeout_unit: f.succ_timeout_unit.value || "sec"
+    timeout_unit: f.succ_timeout_unit.value || "sec",
+    cmp:          f.succ_cmp.value || "==",
+    match:        { value: f.succ_match_value.value || "" }
   } : null;
-
+  
   let errorBranch = ["error","both"].includes(evalMode) ? {
     device_id:    +f.err_device.value,
     topic:        f.err_event_topic.value,
     command:      f.err_command.value,
     result_topic: f.err_topic.value,
     timeout:      +f.err_timeout_value.value || 0,
-    timeout_unit: f.err_timeout_unit.value || "sec"
+    timeout_unit: f.err_timeout_unit.value || "sec",
+    cmp:          f.err_cmp.value || "==",
+    match:        { value: f.err_match_value.value || "" }
   } : null;
 
   const payload = {

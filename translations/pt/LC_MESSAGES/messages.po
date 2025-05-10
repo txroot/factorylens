@@ -439,3 +439,6 @@ msgstr "Ativado"
 
 msgid "automations"
 msgstr "Automações"
+
+msgid "Result Payload Match Value"
+msgstr "Valor de Correspondência para Resultado do comando Then"

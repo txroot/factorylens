@@ -297,6 +297,19 @@
                       <input name="succ_command" class="form-control" disabled>
                     </div>
                   </div>
+                  <!-- ── EVALUATE MATCH (like IF) ─────────────────── -->
+                  <div class="col-md-2 d-none" id="succCmpCol">
+                    <label class="form-label text-success">{{ _('Cmp.') }}</label>
+                    <select name="succ_cmp" class="form-select">
+                      <!-- populated dynamically -->
+                    </select>
+                  </div>
+                  <div class="col-md-6" id="succMatchCol">
+                    <label class="form-label text-success mt-1">{{ _('Result Payload Match Value') }}</label>
+                    <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="succ_match_value" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                    <input name="succ_match_value" class="form-control" disabled>
+                  </div>
                   <!-- custom timeout for success -->
                   <div class="row g-3 mt-2 custom-timeout-succ d-none">
                     <div class="col-md-4 offset-md-3">
@@ -351,6 +364,19 @@
                       <label class="form-label text-danger">{{ _('Payload') }}</label>
                       <input name="err_command" class="form-control" disabled>
                     </div>
+                  </div>
+                  <!-- ── EVALUATE MATCH (like IF) ─────────────────── -->
+                  <div class="col-md-2 d-none" id="errCmpCol">
+                    <label class="form-label text-danger">{{ _('Cmp.') }}</label>
+                    <select name="err_cmp" class="form-select">
+                      <!-- populated dynamically -->
+                    </select>
+                  </div>
+                  <div class="col-md-6" id="errMatchCol">
+                    <label class="form-label text-danger mt-1">{{ _('Result Payload Match Value') }}</label>
+                    <i class="ti ti-info-circle text-muted ms-1 help-btn"
+                          data-field="succ_match_value" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"></i>
+                    <input name="err_match_value" class="form-control" disabled>
                   </div>
                   <!-- custom timeout for error -->
                   <div class="row g-3 mt-2 custom-timeout-err d-none">
