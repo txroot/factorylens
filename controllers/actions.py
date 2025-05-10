@@ -119,11 +119,23 @@ def create_action():
         abort(412, "No Action Agent device is enabled & online")
 
     data = request.get_json(silent=True) or {}
-    for field in ('name','trigger','result','evaluate'):
+    for field in ('name', 'trigger', 'result', 'evaluate'):
         if field not in data:
             abort(400, f"{field} is required")
-    if Action.query.filter_by(name=data['name'].strip()).first():
-        abort(409, "An Action with that name already exists")
+
+    base_name = data['name'].strip()
+    new_name = base_name
+    counter = 1
+
+    # Keep appending " Copy", " Copy 2", etc., until a unique name is found
+    while Action.query.filter_by(name=new_name).first():
+        counter += 1
+        if counter == 2:
+            new_name = f"{base_name} Copy"
+        else:
+            new_name = f"{base_name} Copy {counter - 1}"
+
+    data['name'] = new_name
 
     trg = data['trigger']
     res = data['result']

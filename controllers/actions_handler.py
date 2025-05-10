@@ -69,7 +69,7 @@ class ActionManager:
         self.flask_app = getattr(mqtt_client, "_userdata", None)
         self.interval  = status_interval
 
-        # pending waits: action_id → { event, topic, payload_observed }
+        # pending waits: action_id → { event, topic, payload }
         self._pending: Dict[int, Dict[str, Any]] = {}
         self._lock    = threading.Lock()
 
@@ -81,9 +81,10 @@ class ActionManager:
         threading.Thread(target=self._status_loop, daemon=True).start()
 
     def _load_actions(self):
+        """Load only *enabled* Actions into memory."""
         with self.flask_app.app_context():
             self.actions.clear()
-            for m in ActionModel.query.all():
+            for m in ActionModel.query.filter_by(enabled=True).all():
                 self.actions[m.id] = ActionWrapper(m)
             app.logger.info(f"✅ Loaded {len(self.actions)} Actions")
 
@@ -188,12 +189,12 @@ class ActionManager:
             # — collect evaluate branches
             branches = [n for n in act.chain[2:] if n.get("branch") in ("success","error")]
             if not branches:
-                # no post-THEN logic
+                # no post-THEN logic → immediate finish
                 self._set_state(act, "success")
                 self._set_state(act, "idle")
                 return
 
-            # — if there's no result_topic, fire success immediately
+            # — if there's no result_topic, immediate success
             res_topic = then.get("result_topic","")
             if not res_topic:
                 log.debug("No result_topic → immediate success")
@@ -203,27 +204,52 @@ class ActionManager:
                 return
 
             full_res = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{res_topic}"
-            timeout  = then.get("timeout",0)
-            unit     = then.get("timeout_unit","sec")
-            secs     = self._to_seconds(timeout, unit)
-            ev       = Event()
+            then_timeout = then.get("timeout", 0)
+            then_unit    = then.get("timeout_unit", "sec")
+            secs         = self._to_seconds(then_timeout, then_unit)
+            ev           = Event()
 
-            # — wait for any payload on result_topic
+            # — prepare separate success/error branch lookups
+            succ_node = next((n for n in branches if n.get("branch")=="success"), None)
+            err_node  = next((n for n in branches if n.get("branch")=="error"),   None)
+
+            # compute each branch’s own timeout
+            succ_secs = (succ_node
+                         and self._to_seconds(succ_node.get("timeout", 0),
+                                              succ_node.get("timeout_unit", "sec")))
+            err_secs  = (err_node
+                         and self._to_seconds(err_node.get("timeout", 0),
+                                              err_node.get("timeout_unit", "sec")))
+
+            # choose how long to wait:
+            if succ_node and err_node:
+                # earliest of the two branch timeouts
+                wait_secs = min(succ_secs or float("inf"),
+                                err_secs  or float("inf"))
+            elif err_node:
+                wait_secs = err_secs or secs
+            elif succ_node:
+                wait_secs = succ_secs or secs
+            else:
+                wait_secs = secs
+
+            # — wait for result payload
             with self._lock:
                 self._pending[act.id] = {
-                    "event":    ev,
-                    "topic":    full_res,
-                    "payload":  None
+                    "event":   ev,
+                    "topic":   full_res,
+                    "payload": None
                 }
 
-            log.debug(f"Waiting up to {secs}s for THEN-result on {full_res!r}")
-            got = ev.wait(secs)
+            log.debug(f"Waiting up to {wait_secs}s for THEN-result on {full_res!r}")
+            got = ev.wait(wait_secs)
 
+            # pull observed payload
             with self._lock:
                 pend = self._pending.pop(act.id, {})
             observed = pend.get("payload")
 
-            # — publish completion
+            # publish completion event
             self.client.publish("actions/then/result", json.dumps({
                 "action_id":    act.id,
                 "result_topic": full_res,
@@ -233,30 +259,33 @@ class ActionManager:
 
             # — decide which branch to run
             chosen = None
-            for node in branches:
-                # each branch node carries its own `cmp` + `match.value`
-                if "cmp" in node and "match" in node:
-                    if _compare(observed,
-                                str(node["match"]["value"]),
-                                node["cmp"]):
-                        chosen = node["branch"]
-                        break
+            if got and observed is not None:
+                # 1) error‐match has priority
+                if err_node and _compare(
+                        observed,
+                        str(err_node["match"]["value"]),
+                        err_node.get("cmp","==")
+                ):
+                    chosen = "error"
+                # 2) then success‐match
+                elif succ_node and _compare(
+                        observed,
+                        str(succ_node["match"]["value"]),
+                        succ_node.get("cmp","==")
+                ):
+                    chosen = "success"
+
+            # fallback: if both branches exist but no match, run error
+            if chosen is None and succ_node and err_node:
+                chosen = "error"
 
             if chosen:
-                log.info(f"[THEN] matched branch '{chosen}' for '{act.name}'")
+                log.info(f"[THEN] firing '{chosen}' branch for '{act.name}'")
                 self._run_branch(act, chosen)
                 self._set_state(act, chosen)
-            else:
-                # no match → error if you defined it, else just error
-                has_error = any(n.get("branch")=="error" for n in branches)
-                branch    = "error" if has_error else "error"
-                log.warning(f"[THEN] no branch matched → running '{branch}' for '{act.name}'")
-                self._run_branch(act, branch)
-                self._set_state(act, branch)
 
             # — back to idle
             self._set_state(act, "idle")
-
 
     def _run_branch(self, act: ActionWrapper, branch: str):
         """Send the evaluate‐branch command and publish its event."""

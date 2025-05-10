@@ -258,13 +258,14 @@ function adaptInput(prefix) {
   });
 }
 
-// ─── NEW adaptEvalMatch ─────────────────────────────────────────
+// ─── adaptEvalMatch ─────────────────────────────────────────
 async function adaptEvalMatch(prefix) {
-  // always pull from the THEN step’s result_payload.options
+  // 1) grab the device & topic from the THEN step
   const resDevId = +f.result_device.value;
   const resTopic = f.result_event_topic.value;
   if (!resDevId || !resTopic) return;
 
+  // 2) load that device’s action‐schema
   const schema      = await getSchema(resDevId);
   const cmdMeta     = (schema.command_topics || {})[resTopic] || {};
   const payloadMeta = cmdMeta.result_payload || {};
@@ -272,65 +273,76 @@ async function adaptEvalMatch(prefix) {
   const cmpCol   = qs(`#${prefix}CmpCol`);
   const matchCol = qs(`#${prefix}MatchCol`);
 
-  // if schema gave us an “options” array, build match select from that:
+  // 3) if result_payload.options exists, build dropdown from it
   if (Array.isArray(payloadMeta.options) && payloadMeta.options.length) {
-    let values = [];
+    let values  = [];
     let display = {};
+
     payloadMeta.options.forEach(opt => {
-      if (Array.isArray(opt.values)) {
-        values = values.concat(opt.values);
-      }
-      if (opt.display) {
-        Object.assign(display, opt.display);
-      }
+      if (Array.isArray(opt.values))   values = values.concat(opt.values);
+      if (opt.display)                 Object.assign(display, opt.display);
     });
+
+    // hide comparator for options‐based match
     cmpCol.classList.add("d-none");
+
+    // insert “None” only for the error‐branch
+    const noneOption = prefix === "err"
+      ? `<option value="" selected>— None —</option>`
+      : `<option disabled selected value="">—</option>`;
+
     matchCol.innerHTML = `
       <label class="form-label text-${prefix==='succ'?'success':'danger'}">
         {{ _('Match') }}
       </label>
-      <select name="${prefix}_match_value" class="form-select" required>
-        <option disabled selected value="">—</option>
+      <select name="${prefix}_match_value" class="form-select" ${prefix==='err'?'':'required'}>
+        ${noneOption}
         ${values.map(v => `<option value="${v}">${display[v]||v}</option>`).join("")}
       </select>`;
+    matchCol.parentElement.classList.remove("d-none");
     return;
   }
 
-  // fallback to the old topics-based schema if no options present:
-  const meta = (schema.topics || {})[resTopic] || {};
+  // 4) fallback to the topics‐based schema if no options present
+  const topicMeta = (schema.topics || {})[resTopic] || {};
   matchCol.parentElement.classList.remove("d-none");
 
-  if (meta.type === "enum" || meta.type === "bool") {
+  if (topicMeta.type === "enum" || topicMeta.type === "bool") {
     cmpCol.classList.add("d-none");
+    const noneOption = prefix === "err"
+      ? `<option value="" selected>— None —</option>`
+      : `<option disabled selected value="">—</option>`;
+
     matchCol.innerHTML = `
       <label class="form-label text-${prefix==='succ'?'success':'danger'}">
         {{ _('Match') }}
       </label>
-      <select name="${prefix}_match_value" class="form-select">
-        <option disabled selected value="">—</option>
-        ${(meta.values || ["true","false"]).map(v =>
-          `<option value="${v}">${meta.display?.[v]||v}</option>`
-        ).join("")}
+      <select name="${prefix}_match_value" class="form-select" ${prefix==='err'?'':'required'}>
+        ${noneOption}
+        ${(topicMeta.values||["true","false"])
+          .map(v=>`<option value="${v}">${topicMeta.display?.[v]||v}</option>`)
+          .join("")}
       </select>`;
   }
-  else if (meta.type === "number") {
+  else if (topicMeta.type === "number") {
     cmpCol.classList.remove("d-none");
     cmpCol.innerHTML = `
       <label class="form-label">{{ _('Cmp.') }}</label>
       <select name="${prefix}_cmp" class="form-select">
-        ${(meta.comparators || ["<","<=","==","!="," >=",">"])
-          .map(c => `<option value="${c}">${c}</option>`).join("")}
+        ${(topicMeta.comparators||["<","<=","==","!="," >=",">"])
+          .map(c=>`<option value="${c}">${c}</option>`).join("")}
       </select>`;
     matchCol.innerHTML = `
       <label class="form-label">{{ _('Result Payload Match') }}</label>
       <input name="${prefix}_match_value" type="number" class="form-control"
-             min="${meta.range?.[0]||''}" max="${meta.range?.[1]||''}" required>`;
+             min="${topicMeta.range?.[0]||''}" max="${topicMeta.range?.[1]||''}"
+             ${prefix==='err'?'':'required'}>`;
   }
   else {
     cmpCol.classList.add("d-none");
     matchCol.innerHTML = `
       <label class="form-label">{{ _('Result Payload Match') }}</label>
-      <input name="${prefix}_match_value" class="form-control" required>`;
+      <input name="${prefix}_match_value" class="form-control" ${prefix==='err'?'':'required'}>`;
   }
 }
 
@@ -577,7 +589,15 @@ qs("#saveActionBtn").addEventListener("click", async () => {
     currentEditId = null;
     toast("Saved");
   } else {
-    toast((await res.json())?.message || "Error", "danger");
+    let msg;
+    try {
+      const payload = await res.json();
+      msg = payload.message;
+    } catch {
+      msg = await res.text();
+    }
+    toast(msg || res.statusText, "danger");
+    return;
   }
 });
 
