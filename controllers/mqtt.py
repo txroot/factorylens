@@ -100,6 +100,11 @@ def _on_message(client, app, msg):
         dev.last_seen = datetime.utcnow()
         db.session.commit()
 
+        from controllers.actions_handler import get_action_manager
+        mgr = get_action_manager()
+        if mgr:
+            mgr.handle_message(dev.id, topic, payload)
+
         app.logger.debug("MQTT: Committed updated values for %s with values: %s", dev_id, values)
 
 
@@ -115,6 +120,10 @@ def init_mqtt(app):
     client.on_message  = _on_message
 
     client.connect(_MQTT_HOST, _MQTT_PORT, keepalive=30)
+
+     # ─── START ACTION MANAGER ─────────────────────────────
+    from controllers.actions_handler import init_action_manager
+    app.action_manager = init_action_manager(client, status_interval=5.0)
 
     t = threading.Thread(target=client.loop_forever, daemon=True)
     t.start()

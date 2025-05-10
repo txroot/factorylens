@@ -6,6 +6,7 @@ from models.actions       import Action
 from models.device        import Device
 from models.device_model  import DeviceModel
 from models.device_category import DeviceCategory
+from controllers.actions_handler import get_action_manager
 
 AGENT_MODEL_NAME = "Action Agent"
 VALID_BRANCHES   = ('success', 'error')
@@ -73,9 +74,23 @@ def _validate_result(res: dict):
         abort(400, f"Command “{cmd}” not valid for topic {topic}")
 
 def _unpack_time(source: dict, field: str, target: dict):
-    val = source.get(field, {})
-    target[field] = val.get("value", 0)
-    target[f"{field}_unit"] = val.get("unit", "sec")
+    """
+    Safely read a time-like field. Accepts either:
+      - source[field] = { "value": X, "unit": U }
+      - or source[field] = X and source[f"{field}_unit"] = U
+    Always sets target[field] and target[f"{field}_unit"].
+    """
+    raw = source.get(field)
+    if isinstance(raw, dict):
+        # old style
+        v = raw.get("value", 0)
+        u = raw.get("unit", "sec")
+    else:
+        # flat style
+        v = raw or 0
+        u = source.get(f"{field}_unit", "sec")
+    target[field]         = v
+    target[f"{field}_unit"] = u
 
 # ────────────────────────────────────────────────────────────────────
 #  CRUD
@@ -128,7 +143,8 @@ def create_action():
         "topic":     trg['topic'],
         "cmp":       trg.get('cmp','=='),
         "match":     {"value": trg.get('value','')},
-        "poll_topic": trg.get("poll_topic", "")
+        "poll_topic": trg.get("poll_topic", ""),
+        "poll_payload": tmeta.get("poll_payload","")
     }
     _unpack_time(trg, "poll_interval", node_if)
     chain.append(node_if)
@@ -140,7 +156,8 @@ def create_action():
         "topic":       res['topic'],
         "command":     res['command'],
         "ignore_input": bool(res.get('ignore_input', False)),
-        "result_topic": res.get("result_topic", "")
+        "result_topic": res.get("result_topic", ""),
+        "result_payload": cmeta.get("result_payload", {})
     }
     _unpack_time(res, "timeout", node_then)
     chain.append(node_then)
@@ -150,10 +167,12 @@ def create_action():
     if mode in ('success','both') and ev.get('success'):
         sb = ev['success']
         _validate_result(sb)
+        sb_meta  = schema_map.get("command_topics",{}).get(sb['topic'],{})
         sb_node = {
             **sb,
-            "branch": "success",
-            "result_topic": sb.get("result_topic", "")
+            "branch":         "success",
+            "result_topic":   sb.get("result_topic",""),
+            "result_payload": sb_meta.get("result_payload",{})
         }
         _unpack_time(sb, "timeout", sb_node)
         chain.append(sb_node)
@@ -161,10 +180,12 @@ def create_action():
     if mode in ('error','both') and ev.get('error'):
         eb = ev['error']
         _validate_result(eb)
+        eb_meta  = schema_map.get("command_topics",{}).get(eb['topic'],{})
         eb_node = {
             **eb,
-            "branch": "error",
-            "result_topic": eb.get("result_topic", "")
+            "branch":         "error",
+            "result_topic":   eb.get("result_topic",""),
+            "result_payload": eb_meta.get("result_payload",{})
         }
         _unpack_time(eb, "timeout", eb_node)
         chain.append(eb_node)
@@ -177,6 +198,18 @@ def create_action():
     )
     db.session.add(a)
     db.session.commit()
+
+    # --- hot-reload into running ActionManager as a wrapper, not raw model ---
+    from controllers.actions_handler import get_action_manager, ActionWrapper
+    mgr = get_action_manager()
+    if mgr:
+        if a.enabled:
+            mgr.actions[a.id] = ActionWrapper(a)
+            # re-subscribe to any new topics
+            mgr._install_subscriptions()
+        else:
+            mgr.actions.pop(a.id, None)
+
     return jsonify(ok=True, id=a.id)
 
 
@@ -212,7 +245,8 @@ def update_action(action_id: int):
             "topic":     trg['topic'],
             "cmp":       trg.get('cmp','=='),
             "match":     {"value": trg.get('value','')},
-            "poll_topic": trg.get("poll_topic", "")
+            "poll_topic": trg.get("poll_topic", ""),
+            "poll_payload": tmeta.get("poll_payload","")
         }
         _unpack_time(trg, "poll_interval", node_if)
         new_chain.append(node_if)
@@ -223,7 +257,8 @@ def update_action(action_id: int):
             "topic":       res['topic'],
             "command":     res['command'],
             "ignore_input": bool(res.get('ignore_input', False)),
-            "result_topic": res.get("result_topic", "")
+            "result_topic": res.get("result_topic", ""),
+            "result_payload": cmeta.get("result_payload", {})
         }
         _unpack_time(res, "timeout", node_then)
         new_chain.append(node_then)
@@ -232,10 +267,12 @@ def update_action(action_id: int):
         if mode in ('success','both') and ev.get('success'):
             sb = ev['success']
             _validate_result(sb)
+            sb_meta  = schema_map.get("command_topics",{}).get(sb['topic'],{})
             sb_node = {
                 **sb,
-                "branch": "success",
-                "result_topic": sb.get("result_topic", "")
+                "branch":         "success",
+                "result_topic":   sb.get("result_topic",""),
+                "result_payload": sb_meta.get("result_payload",{})
             }
             _unpack_time(sb, "timeout", sb_node)
             new_chain.append(sb_node)
@@ -243,10 +280,12 @@ def update_action(action_id: int):
         if mode in ('error','both') and ev.get('error'):
             eb = ev['error']
             _validate_result(eb)
+            eb_meta  = schema_map.get("command_topics",{}).get(eb['topic'],{})
             eb_node = {
                 **eb,
-                "branch": "error",
-                "result_topic": eb.get("result_topic", "")
+                "branch":         "error",
+                "result_topic":   eb.get("result_topic",""),
+                "result_payload": eb_meta.get("result_payload",{})
             }
             _unpack_time(eb, "timeout", eb_node)
             new_chain.append(eb_node)
@@ -254,6 +293,17 @@ def update_action(action_id: int):
         a.chain = new_chain
 
     db.session.commit()
+
+    # --- update live ActionManager as a wrapper, not raw model ---
+    from controllers.actions_handler import get_action_manager, ActionWrapper
+    mgr = get_action_manager()
+    if mgr:
+        if a.enabled:
+            mgr.actions[a.id] = ActionWrapper(a)
+            mgr._install_subscriptions()
+        else:
+            mgr.actions.pop(a.id, None)
+
     return jsonify(ok=True)
 
 
@@ -261,4 +311,10 @@ def delete_action(action_id: int):
     a = Action.query.get_or_404(action_id)
     db.session.delete(a)
     db.session.commit()
+
+    # --- remove from live ActionManager ---
+    mgr = get_action_manager()
+    if mgr:
+        mgr.actions.pop(action_id, None)
+
     return jsonify(ok=True)

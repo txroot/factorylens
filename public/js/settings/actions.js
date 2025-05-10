@@ -40,20 +40,21 @@ const errTimeoutRow     = qs(".custom-timeout-err");
 const errTimeoutChk     = qs("#errTimeoutChk");
 
 // Toggle custom-poll & custom-timeout inputs
-[ triggerPollChk, resultTimeoutChk, succTimeoutChk, errTimeoutChk ].forEach(chk => {
-  if (!chk) return;
-  chk.addEventListener("change", () => {
-    let prefix, valName, unitName;
-    if (chk === triggerPollChk)      { prefix="trigger"; valName="poll_value";   unitName="poll_unit"; }
-    else if (chk === resultTimeoutChk){ prefix="result";  valName="timeout_value";unitName="timeout_unit"; }
-    else if (chk === succTimeoutChk)  { prefix="succ";    valName="timeout_value";unitName="timeout_unit"; }
-    else                              { prefix="err";     valName="timeout_value";unitName="timeout_unit"; }
-    const inpVal  = f[`${prefix}_${valName}`];
-    const inpUnit = f[`${prefix}_${unitName}`];
-    if (inpVal)  inpVal.disabled  = !chk.checked;
-    if (inpUnit) inpUnit.disabled = !chk.checked;
+[ triggerPollChk, resultTimeoutChk, succTimeoutChk, errTimeoutChk ]
+  .forEach(chk => {
+    if (!chk) return;
+    chk.addEventListener("change", () => {
+      let prefix, valName, unitName;
+      if      (chk === triggerPollChk)       { prefix="trigger"; valName="poll_value";   unitName="poll_unit"; }
+      else if (chk === resultTimeoutChk)     { prefix="result";  valName="timeout_value";unitName="timeout_unit"; }
+      else if (chk === succTimeoutChk)       { prefix="succ";    valName="timeout_value";unitName="timeout_unit"; }
+      else                                   { prefix="err";     valName="timeout_value";unitName="timeout_unit"; }
+      const inpVal  = f[`${prefix}_${valName}`];
+      const inpUnit = f[`${prefix}_${unitName}`];
+      if (inpVal)  inpVal.disabled  = !chk.checked;
+      if (inpUnit) inpUnit.disabled = !chk.checked;
+    });
   });
-});
 
 // Fetch device list
 async function fetchDevs() {
@@ -102,7 +103,6 @@ async function buildTriggerDevices() {
   sel.innerHTML = `<option disabled selected value="">—</option>`;
   (await fetchDevs()).filter(d => d.enabled)
     .forEach(d => sel.insertAdjacentHTML("beforeend", `<option value="${d.id}">${d.name}</option>`));
-  // reset topics
   f.trigger_event_topic.disabled = true;
   f.trigger_topic.disabled       = true;
 }
@@ -148,11 +148,10 @@ async function loadTopics(devId, prefix) {
   const source = prefix==="trigger" ? schema.topics : schema.command_topics;
   if (!source) return;
 
-  // populate event-topic dropdown
   Object.entries(source).forEach(([topic, meta]) => {
     eventSel.insertAdjacentHTML("beforeend", `
-      <option value="${topic}" data-meta='${JSON.stringify(meta)}'>
-        ${meta.label||topic}
+      <option value="${topic}" data-meta="${encodeURIComponent(JSON.stringify(meta))}">
+        ${meta.label || topic}
       </option>`);
   });
   eventSel.disabled = false;
@@ -165,12 +164,12 @@ function adaptInput(prefix) {
   const opt     = eventSel.selectedOptions[0];
   const metaRaw = opt?.dataset.meta;
   if (!metaRaw) return;
-  const m       = JSON.parse(metaRaw);
+  const m = JSON.parse(decodeURIComponent(metaRaw));
   const vCol    = qs(`#${prefix}ValCol`);
   const cCol    = qs(`#${prefix}CmpCol`);
   if (!vCol) return;
 
-  // populate hidden topic select (poll_topic or result_topic)
+  // hidden topic
   const hiddenSel = f[`${prefix}_topic`];
   if (hiddenSel) {
     const hiddenVal = m.poll_topic ?? m.result_topic ?? "";
@@ -178,7 +177,7 @@ function adaptInput(prefix) {
     hiddenSel.disabled = true;
   }
 
-  // start fresh input
+  // reset input
   cCol?.classList.add("d-none");
   vCol.innerHTML = `
     <label class="form-label">
@@ -189,7 +188,7 @@ function adaptInput(prefix) {
   const inp = vCol.querySelector("input");
   inp?.removeAttribute("disabled");
 
-  // enum/bool → <select>
+  // enum/bool
   if (m.type==="enum"||m.type==="bool") {
     const opts = m.type==="bool"?["true","false"]:m.values;
     vCol.innerHTML = `
@@ -203,7 +202,7 @@ function adaptInput(prefix) {
       </select>`;
     if (prefix==="trigger") { outType = m.type; buildResultDevices(); }
   }
-  // number → comparator + constraints
+  // number
   else if (m.type==="number") {
     if (cCol) {
       cCol.classList.remove("d-none");
@@ -224,7 +223,7 @@ function adaptInput(prefix) {
     if (prefix==="trigger") { outType = m.type; buildResultDevices(); }
   }
 
-  // custom poll interval for trigger
+  // custom poll (trigger)
   if (prefix==="trigger") {
     if (m.poll_interval>0) {
       triggerPollRow.classList.remove("d-none");
@@ -238,7 +237,7 @@ function adaptInput(prefix) {
     }
   }
 
-  // custom timeout for result/succ/err
+  // custom timeout (result/succ/err)
   ["result","succ","err"].forEach(p => {
     if (prefix===p && m.timeout>0) {
       const row = p==="result" ? resultTimeoutRow
@@ -271,7 +270,6 @@ modeRadios.forEach(r => r.addEventListener("change", updateEvalUI));
 // ─── Delete & Edit clicks ─────────────────────────────────────
 qs("#actionsTable tbody").addEventListener("click", async e => {
   const del  = e.target.closest(".del-btn");
-  const edit = e.target.closest(".edit-btn");
   if (del) {
     if (!confirm("Delete this action?")) return;
     const res = await fetch(`/actions/${del.dataset.id}`, { method: "DELETE" });
@@ -279,91 +277,108 @@ qs("#actionsTable tbody").addEventListener("click", async e => {
     else        toast("Error deleting", "danger");
     return;
   }
-  if (edit) {
-    currentEditId = edit.dataset.id;
-    const r = await fetch(`/actions/${currentEditId}`);
-    if (!r.ok) { toast("Error loading action", "danger"); return; }
-    const a = await r.json();
 
-    // reset form
-    f.reset();
-    f.classList.remove("was-validated");
-    modalTitle.textContent = "Edit Action";
-    outType = null;
-    ignoreInputChk.checked = false;
+  const edit = e.target.closest(".edit-btn");
+  if (!edit) return;
 
-    // basic
-    f.name.value        = a.name;
-    f.description.value = a.description;
-    f.enabled.checked   = a.enabled;
+  // ── EDIT ACTION ──────────────────────────────────────────────
+  currentEditId = edit.dataset.id;
+  const r = await fetch(`/actions/${currentEditId}`);
+  if (!r.ok) { toast("Error loading action","danger"); return; }
+  const a = await r.json();
 
-    // ── IF node
-    const [ trg, cmd, ...branches ] = a.chain;
-    await buildTriggerDevices();
-    f.trigger_device.value = trg.device_id;
-    await loadTopics(trg.device_id, "trigger");
-    f.trigger_event_topic.value = trg.topic;
-    adaptInput("trigger");
-    f.trigger_value.value = trg.match.value;
+  // reset form
+  f.reset(); f.classList.remove("was-validated");
+  modalTitle.textContent = "Edit Action";
+  ignoreInputChk.checked = false;
+  [triggerPollRow, resultTimeoutRow, succTimeoutRow, errTimeoutRow]
+    .forEach(row => row.classList.add("d-none"));
 
-    // ── THEN node
-    ignoreInputChk.checked = !!cmd.ignore_input;
-    await buildResultDevices();
-    f.result_device.value = cmd.device_id;
-    await loadTopics(cmd.device_id, "result");
-    f.result_event_topic.value = cmd.topic;
-    adaptInput("result");
-    f.result_command.value = cmd.command;
+  // BASIC
+  f.name.value        = a.name;
+  f.description.value = a.description;
+  f.enabled.checked   = a.enabled;
 
-    // ── EVALUATE
-    const hasSuccess = branches.some(n => n.branch==="success");
-    const hasError   = branches.some(n => n.branch==="error");
-    if      (!hasSuccess && !hasError) qs("#evalIgnore").checked = true;
-    else if (hasSuccess && !hasError) qs("#evalSuccess").checked = true;
-    else if (!hasSuccess && hasError) qs("#evalError").checked   = true;
-    else                             qs("#evalBoth").checked    = true;
-    updateEvalUI();
-
-    // Success branch
-    if (hasSuccess) {
-      const sb = branches.find(n => n.branch==="success");
-      await buildEvalDevices("succ");
-      f.succ_device.value = sb.device_id;
-      await loadTopics(sb.device_id, "succ");
-      f.succ_event_topic.value = sb.topic;
-      adaptInput("succ");
-      f.succ_command.value = sb.command;
-      if (sb.timeout) {
-        succTimeoutRow.classList.remove("d-none");
-        succTimeoutChk.checked = false;
-        f.succ_timeout_value.value = sb.timeout.value;
-        f.succ_timeout_unit.value  = sb.timeout.unit;
-        f.succ_timeout_value.disabled = true;
-        f.succ_timeout_unit.disabled  = true;
-      }
-    }
-
-    // Error branch
-    if (hasError) {
-      const eb = branches.find(n => n.branch==="error");
-      await buildEvalDevices("err");
-      f.err_device.value = eb.device_id;
-      await loadTopics(eb.device_id, "err");
-      f.err_event_topic.value = eb.topic;
-      adaptInput("err");
-      f.err_command.value = eb.command;
-      if (eb.timeout) {
-        errTimeoutRow.classList.remove("d-none");
-        errTimeoutChk.checked = false;
-        f.err_timeout_value.value = eb.timeout.value;
-        f.err_timeout_unit.value  = eb.timeout.unit;
-        f.err_timeout_value.disabled = true;
-        f.err_timeout_unit.disabled  = true;
-      }
-    }
-
-    modal.show();
+  // IF
+  const [ trg, cmd, ...branches ] = a.chain;
+  await buildTriggerDevices();
+  f.trigger_device.value      = trg.device_id;
+  await loadTopics(trg.device_id,"trigger");
+  f.trigger_event_topic.value = trg.topic;
+  adaptInput("trigger");
+  f.trigger_value.value       = trg.match.value;
+  if (typeof trg.poll_interval === "number" && trg.poll_interval > 0) {
+    triggerPollRow.classList.remove("d-none");
+    triggerPollChk.checked = true;
+    f.trigger_poll_value.value    = trg.poll_interval;
+    f.trigger_poll_unit.value     = trg.poll_interval_unit;
+    f.trigger_poll_value.disabled = false;
+    f.trigger_poll_unit.disabled  = false;
   }
+
+  // THEN
+  ignoreInputChk.checked      = !!cmd.ignore_input;
+  await buildResultDevices();
+  f.result_device.value       = cmd.device_id;
+  await loadTopics(cmd.device_id,"result");
+  f.result_event_topic.value  = cmd.topic;
+  adaptInput("result");
+  f.result_command.value      = cmd.command;
+  if (typeof cmd.timeout === "number" && cmd.timeout > 0) {
+    resultTimeoutRow.classList.remove("d-none");
+    resultTimeoutChk.checked = true;
+    f.result_timeout_value.value    = cmd.timeout;
+    f.result_timeout_unit.value     = cmd.timeout_unit;
+    f.result_timeout_value.disabled = false;
+    f.result_timeout_unit.disabled  = false;
+  }
+
+  // EVALUATE
+  const hasS = branches.some(n => n.branch==="success");
+  const hasE = branches.some(n => n.branch==="error");
+  if      (!hasS && !hasE) qs("#evalIgnore").checked = true;
+  else if (hasS && !hasE)  qs("#evalSuccess").checked = true;
+  else if (!hasS && hasE)  qs("#evalError").checked   = true;
+  else                      qs("#evalBoth").checked    = true;
+  updateEvalUI();
+
+  if (hasS) {
+    const sb = branches.find(n => n.branch==="success");
+    await buildEvalDevices("succ");
+    f.succ_device.value         = sb.device_id;
+    await loadTopics(sb.device_id,"succ");
+    f.succ_event_topic.value    = sb.topic;
+    adaptInput("succ");
+    f.succ_command.value        = sb.command;
+    if (typeof sb.timeout === "number" && sb.timeout > 0) {
+      succTimeoutRow.classList.remove("d-none");
+      succTimeoutChk.checked = true;
+      f.succ_timeout_value.value    = sb.timeout;
+      f.succ_timeout_unit.value     = sb.timeout_unit;
+      f.succ_timeout_value.disabled = false;
+      f.succ_timeout_unit.disabled  = false;
+    }
+  }
+
+  if (hasE) {
+    const eb = branches.find(n => n.branch==="error");
+    await buildEvalDevices("err");
+    f.err_device.value         = eb.device_id;
+    await loadTopics(eb.device_id,"err");
+    f.err_event_topic.value    = eb.topic;
+    adaptInput("err");
+    f.err_command.value        = eb.command;
+    if (typeof eb.timeout === "number" && eb.timeout > 0) {
+      errTimeoutRow.classList.remove("d-none");
+      errTimeoutChk.checked = true;
+      f.err_timeout_value.value    = eb.timeout;
+      f.err_timeout_unit.value     = eb.timeout_unit;
+      f.err_timeout_value.disabled = false;
+      f.err_timeout_unit.disabled  = false;
+    }
+  }
+
+  modal.show();
 });
 
 // ─── “New Action” button ────────────────────────────────────────
@@ -384,14 +399,14 @@ qs("#addActionBtn").addEventListener("click", async () => {
 // ─── Form change handlers ───────────────────────────────────────
 f.addEventListener("change", e => {
   const n = e.target.name;
-  if      (n==="trigger_device")        loadTopics(e.target.value, "trigger");
-  else if (n==="trigger_event_topic")   adaptInput("trigger");
-  else if (n==="result_device")         loadTopics(e.target.value, "result");
-  else if (n==="result_event_topic")    adaptInput("result");
-  else if (n==="succ_device")           loadTopics(e.target.value, "succ");
-  else if (n==="succ_event_topic")      adaptInput("succ");
-  else if (n==="err_device")            loadTopics(e.target.value, "err");
-  else if (n==="err_event_topic")       adaptInput("err");
+  if      (n==="trigger_device")      loadTopics(e.target.value, "trigger");
+  else if (n==="trigger_event_topic") adaptInput("trigger");
+  else if (n==="result_device")       loadTopics(e.target.value, "result");
+  else if (n==="result_event_topic")  adaptInput("result");
+  else if (n==="succ_device")         loadTopics(e.target.value, "succ");
+  else if (n==="succ_event_topic")    adaptInput("succ");
+  else if (n==="err_device")          loadTopics(e.target.value, "err");
+  else if (n==="err_event_topic")     adaptInput("err");
 });
 ignoreInputChk.addEventListener("change", buildResultDevices);
 
@@ -403,26 +418,22 @@ qs("#saveActionBtn").addEventListener("click", async () => {
   // Build evaluation branches
   const evalMode = f.eval_mode.value;
 
-  let successBranch = ["success", "both"].includes(evalMode) ? {
-    device_id: +f.succ_device.value,
-    topic:     f.succ_event_topic.value,
-    command:   f.succ_command.value,
+  let successBranch = ["success","both"].includes(evalMode) ? {
+    device_id:    +f.succ_device.value,
+    topic:        f.succ_event_topic.value,
+    command:      f.succ_command.value,
     result_topic: f.succ_topic.value,
-    timeout: {
-      value: +f.succ_timeout_value.value || 0,
-      unit:  f.succ_timeout_unit.value || "sec"
-    }
+    timeout:      +f.succ_timeout_value.value || 0,
+    timeout_unit: f.succ_timeout_unit.value || "sec"
   } : null;
 
-  let errorBranch = ["error", "both"].includes(evalMode) ? {
-    device_id: +f.err_device.value,
-    topic:     f.err_event_topic.value,
-    command:   f.err_command.value,
+  let errorBranch = ["error","both"].includes(evalMode) ? {
+    device_id:    +f.err_device.value,
+    topic:        f.err_event_topic.value,
+    command:      f.err_command.value,
     result_topic: f.err_topic.value,
-    timeout: {
-      value: +f.err_timeout_value.value || 0,
-      unit:  f.err_timeout_unit.value || "sec"
-    }
+    timeout:      +f.err_timeout_value.value || 0,
+    timeout_unit: f.err_timeout_unit.value || "sec"
   } : null;
 
   const payload = {
@@ -435,10 +446,8 @@ qs("#saveActionBtn").addEventListener("click", async () => {
       cmp:           f.trigger_cmp?.value || "==",
       value:         f.trigger_value.value || "",
       poll_topic:    f.trigger_topic.value,
-      poll_interval: {
-        value: +f.trigger_poll_value.value || 0,
-        unit:  f.trigger_poll_unit.value || "sec"
-      }
+      poll_interval: +f.trigger_poll_value.value || 0,
+      poll_interval_unit: f.trigger_poll_unit.value || "sec"
     },
     result: {
       device_id:    +f.result_device.value,
@@ -446,10 +455,8 @@ qs("#saveActionBtn").addEventListener("click", async () => {
       command:      f.result_command.value,
       ignore_input: ignoreInputChk.checked,
       result_topic: f.result_topic.value,
-      timeout: {
-        value: +f.result_timeout_value.value || 0,
-        unit:  f.result_timeout_unit.value || "sec"
-      }
+      timeout:      +f.result_timeout_value.value || 0,
+      timeout_unit: f.result_timeout_unit.value || "sec"
     },
     evaluate: {
       mode:    evalMode,
@@ -459,7 +466,7 @@ qs("#saveActionBtn").addEventListener("click", async () => {
   };
 
   const url    = currentEditId ? `/actions/${currentEditId}` : "/actions/";
-  const method = currentEditId ? "PUT"                        : "POST";
+  const method = currentEditId ? "PUT" : "POST";
 
   const res = await fetch(url, {
     method,

@@ -28,7 +28,8 @@ SHELLY_ACTION_SCHEMA = {
             "false":              0,
             "poll_interval":      0,
             "poll_interval_unit": "sec",
-            "poll_topic":         ""
+            "poll_topic":         "",
+            "poll_payload":        ""
         },
         "input/1": {
             "label":              "Input 1",
@@ -40,9 +41,10 @@ SHELLY_ACTION_SCHEMA = {
             "false":              0,
             "poll_interval":      0,
             "poll_interval_unit": "sec",
-            "poll_topic":         ""
+            "poll_topic":         "",
+            "poll_payload":        ""
         },
-        "input_event/0/event": {
+        "input_event/0": {
             "label":              "Button 0 Event",
             "tooltip":            "Type of event on button 0",
             "hint":               "Select short or long press",
@@ -52,9 +54,10 @@ SHELLY_ACTION_SCHEMA = {
             "display":            {"S":"Short Press","L":"Long Press"},
             "poll_interval":      0,
             "poll_interval_unit": "sec",
-            "poll_topic":         ""
+            "poll_topic":         "",
+            "poll_payload":        ""
         },
-        "input_event/1/event": {
+        "input_event/1": {
             "label":              "Button 1 Event",
             "tooltip":            "Type of event on button 1",
             "hint":               "Select short or long press",
@@ -64,7 +67,8 @@ SHELLY_ACTION_SCHEMA = {
             "display":            {"":"None","S":"Short Press","L":"Long Press"},
             "poll_interval":      0,
             "poll_interval_unit": "sec",
-            "poll_topic":         ""
+            "poll_topic":         "",
+            "poll_payload":        ""
         },
         "relay/0": {
             "label":              "Relay 0 State",
@@ -75,7 +79,8 @@ SHELLY_ACTION_SCHEMA = {
             "values":             ["on","off"],
             "poll_interval":      0,
             "poll_interval_unit": "sec",
-            "poll_topic":         ""
+            "poll_topic":         "",
+            "poll_payload":        ""
         },
         "relay/0/power": {
             "label":              "Relay 0 Power",
@@ -88,7 +93,8 @@ SHELLY_ACTION_SCHEMA = {
             "comparators":        ["<","<=","==","!="," >=",">"],
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "relay/0/power"
+            "poll_topic":         "relay/0/power",
+            "poll_payload":        ""
         },
         "relay/0/energy": {
             "label":              "Relay 0 Energy",
@@ -99,7 +105,8 @@ SHELLY_ACTION_SCHEMA = {
             "units":              "Wh",
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "relay/0/energy"
+            "poll_topic":         "relay/0/energy",
+            "poll_payload":        ""
         },
         "relay/1": {
             "label":              "Relay 1 State",
@@ -110,7 +117,8 @@ SHELLY_ACTION_SCHEMA = {
             "values":             ["on","off"],
             "poll_interval":      0,
             "poll_interval_unit": "sec",
-            "poll_topic":         ""
+            "poll_topic":         "",
+            "poll_payload":        ""
         },
         "relay/1/power": {
             "label":              "Relay 1 Power",
@@ -123,7 +131,8 @@ SHELLY_ACTION_SCHEMA = {
             "comparators":        ["<","<=","==","!="," >=",">"],
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "relay/1/power"
+            "poll_topic":         "relay/1/power",
+            "poll_payload":        ""
         },
         "relay/1/energy": {
             "label":              "Relay 1 Energy",
@@ -134,7 +143,8 @@ SHELLY_ACTION_SCHEMA = {
             "units":              "Wh",
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "relay/1/energy"
+            "poll_topic":         "relay/1/energy",
+            "poll_payload":        ""
         },
         "temperature": {
             "label":              "Temperature (°C)",
@@ -147,7 +157,8 @@ SHELLY_ACTION_SCHEMA = {
             "comparators":        ["<","<=","==","!="," >=",">"],
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "temperature"
+            "poll_topic":         "temperature",
+            "poll_payload":        ""
         },
         "temperature_f": {
             "label":              "Temperature (°F)",
@@ -159,7 +170,8 @@ SHELLY_ACTION_SCHEMA = {
             "range":              [-58,302],
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "temperature_f"
+            "poll_topic":         "temperature_f",
+            "poll_payload":        ""
         },
         "temperature_status": {
             "label":              "Temperature Status",
@@ -170,7 +182,8 @@ SHELLY_ACTION_SCHEMA = {
             "values":             ["Normal","Overheated"],
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "temperature_status"
+            "poll_topic":         "temperature_status",
+            "poll_payload":        ""
         },
         "overtemperature": {
             "label":              "Overtemperature",
@@ -182,7 +195,8 @@ SHELLY_ACTION_SCHEMA = {
             "false":              0,
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "overtemperature"
+            "poll_topic":         "overtemperature",
+            "poll_payload":        ""
         },
         "voltage": {
             "label":              "Voltage",
@@ -193,7 +207,8 @@ SHELLY_ACTION_SCHEMA = {
             "units":              "V",
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "voltage"
+            "poll_topic":         "voltage",
+            "poll_payload":        ""
         },
         "online": {
             "label":              "Device Online",
@@ -203,7 +218,8 @@ SHELLY_ACTION_SCHEMA = {
             "type":               "bool",
             "poll_interval":      30,
             "poll_interval_unit": "sec",
-            "poll_topic":         "online"
+            "poll_topic":         "online",
+            "poll_payload":        ""
         },
         "info/wifi_sta/rssi": {
             "label":              "WiFi RSSI",
@@ -214,7 +230,8 @@ SHELLY_ACTION_SCHEMA = {
             "units":              "dBm",
             "poll_interval":      60,
             "poll_interval_unit": "sec",
-            "poll_topic":         "info/wifi_sta/rssi"
+            "poll_topic":         "info/wifi_sta/rssi",
+            "poll_payload":        ""
         }
     },
     "command_topics": {
@@ -227,7 +244,19 @@ SHELLY_ACTION_SCHEMA = {
             "values":        ["on","off"],
             "timeout":       10,
             "timeout_unit":  "sec",
-            "result_topic":  "relay/0"
+            "result_topic":  "relay/0",
+            "result_payload": {
+                "options:" [
+                    {
+                        "value": "on",
+                        "description": "Relay 1 is now on"
+                    },
+                    {
+                        "value": "off",
+                        "description": "Relay 1 is now off"
+                    }
+                ]
+            }
         },
         "relay/1/command": {
             "label":         "Relay 1 Command",
@@ -238,7 +267,19 @@ SHELLY_ACTION_SCHEMA = {
             "values":        ["on","off"],
             "timeout":       10,
             "timeout_unit":  "sec",
-            "result_topic":  "relay/1"
+            "result_topic":  "relay/1",
+            "result_payload": {
+                "options:" [
+                    {
+                        "value": "on",
+                        "description": "Relay 1 is now on"
+                    },
+                    {
+                        "value": "off",
+                        "description": "Relay 1 is now off"
+                    }
+                ]
+            }
         }
     }
 }
