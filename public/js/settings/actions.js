@@ -24,10 +24,10 @@ let outType = null;
 // Modal & form refs
 const modal             = new bootstrap.Modal("#actionModal");
 const modalTitle        = qs("#modalTitle");
-const f                  = qs("#actionForm");
-const ignoreInputChk     = qs("#ignoreInputChk");
-const succRow            = qs("#succRow");
-const errRow             = qs("#errRow");
+const f                 = qs("#actionForm");
+const ignoreInputChk    = qs("#ignoreInputChk");
+const succRow           = qs("#succRow");
+const errRow            = qs("#errRow");
 
 // Custom poll & timeout rows & checkboxes
 const triggerPollRow    = qs(".custom-poll");
@@ -45,10 +45,10 @@ const errTimeoutChk     = qs("#errTimeoutChk");
     if (!chk) return;
     chk.addEventListener("change", () => {
       let prefix, valName, unitName;
-      if      (chk === triggerPollChk)       { prefix="trigger"; valName="poll_value";   unitName="poll_unit"; }
-      else if (chk === resultTimeoutChk)     { prefix="result";  valName="timeout_value";unitName="timeout_unit"; }
-      else if (chk === succTimeoutChk)       { prefix="succ";    valName="timeout_value";unitName="timeout_unit"; }
-      else                                   { prefix="err";     valName="timeout_value";unitName="timeout_unit"; }
+      if      (chk === triggerPollChk)   { prefix="trigger"; valName="poll_value";   unitName="poll_unit"; }
+      else if (chk === resultTimeoutChk) { prefix="result";  valName="timeout_value";unitName="timeout_unit"; }
+      else if (chk === succTimeoutChk)   { prefix="succ";    valName="timeout_value";unitName="timeout_unit"; }
+      else                                { prefix="err";     valName="timeout_value";unitName="timeout_unit"; }
       const inpVal  = f[`${prefix}_${valName}`];
       const inpUnit = f[`${prefix}_${unitName}`];
       if (inpVal)  inpVal.disabled  = !chk.checked;
@@ -258,39 +258,62 @@ function adaptInput(prefix) {
   });
 }
 
+// ─── NEW adaptEvalMatch ─────────────────────────────────────────
 async function adaptEvalMatch(prefix) {
-  const devId = +f[`${prefix}_device`].value;
-  const resTopic = f[`${prefix}_topic`].value;            // hidden result_topic
-  if (!devId || !resTopic) return;
+  // always pull from the THEN step’s result_payload.options
+  const resDevId = +f.result_device.value;
+  const resTopic = f.result_event_topic.value;
+  if (!resDevId || !resTopic) return;
 
-  // fetch that device's schema
-  const schema = await getSchema(devId);
-  const meta   = (schema.topics || {})[resTopic] || {};
+  const schema      = await getSchema(resDevId);
+  const cmdMeta     = (schema.command_topics || {})[resTopic] || {};
+  const payloadMeta = cmdMeta.result_payload || {};
 
   const cmpCol   = qs(`#${prefix}CmpCol`);
   const matchCol = qs(`#${prefix}MatchCol`);
-  const cmpSel   = f[`${prefix}_cmp`];
-  const valInp   = f[`${prefix}_match_value`];
 
-  // always enable the value input
-  valInp.disabled = false;
+  // if schema gave us an “options” array, build match select from that:
+  if (Array.isArray(payloadMeta.options) && payloadMeta.options.length) {
+    let values = [];
+    let display = {};
+    payloadMeta.options.forEach(opt => {
+      if (Array.isArray(opt.values)) {
+        values = values.concat(opt.values);
+      }
+      if (opt.display) {
+        Object.assign(display, opt.display);
+      }
+    });
+    cmpCol.classList.add("d-none");
+    matchCol.innerHTML = `
+      <label class="form-label text-${prefix==='succ'?'success':'danger'}">
+        {{ _('Match') }}
+      </label>
+      <select name="${prefix}_match_value" class="form-select" required>
+        <option disabled selected value="">—</option>
+        ${values.map(v => `<option value="${v}">${display[v]||v}</option>`).join("")}
+      </select>`;
+    return;
+  }
+
+  // fallback to the old topics-based schema if no options present:
+  const meta = (schema.topics || {})[resTopic] || {};
+  matchCol.parentElement.classList.remove("d-none");
 
   if (meta.type === "enum" || meta.type === "bool") {
-    // build a <select> of allowed values
+    cmpCol.classList.add("d-none");
     matchCol.innerHTML = `
       <label class="form-label text-${prefix==='succ'?'success':'danger'}">
         {{ _('Match') }}
       </label>
       <select name="${prefix}_match_value" class="form-select">
         <option disabled selected value="">—</option>
-        ${(meta.values || ["true","false"]).map(v=>
+        ${(meta.values || ["true","false"]).map(v =>
           `<option value="${v}">${meta.display?.[v]||v}</option>`
         ).join("")}
       </select>`;
-    cmpCol.classList.add("d-none");
   }
   else if (meta.type === "number") {
-    // show comparator + numeric input
     cmpCol.classList.remove("d-none");
     cmpCol.innerHTML = `
       <label class="form-label">{{ _('Cmp.') }}</label>
@@ -301,19 +324,14 @@ async function adaptEvalMatch(prefix) {
     matchCol.innerHTML = `
       <label class="form-label">{{ _('Result Payload Match') }}</label>
       <input name="${prefix}_match_value" type="number" class="form-control"
-             min="${meta.range?.[0]??''}" max="${meta.range?.[1]??''}" required>`;
+             min="${meta.range?.[0]||''}" max="${meta.range?.[1]||''}" required>`;
   }
   else {
-    // free-text fallback
     cmpCol.classList.add("d-none");
     matchCol.innerHTML = `
       <label class="form-label">{{ _('Result Payload Match') }}</label>
       <input name="${prefix}_match_value" class="form-control" required>`;
   }
-
-  // show both columns
-  cmpCol.classList.toggle("d-none", meta.type !== "number");
-  matchCol.parentElement.classList.remove("d-none");
 }
 
 // wire it up:
