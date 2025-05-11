@@ -228,6 +228,8 @@ class ActionManager:
             succ_rt = full_rt(succ_node) if succ_node else None
             err_rt  = full_rt(err_node ) if err_node  else None
 
+            log.debug(f"→ [THEN] Waiting for {succ_rt} or {err_rt}")
+
             base_secs = self._to_seconds(then.get('timeout',0), then.get('timeout_unit','sec'))
             succ_secs = self._to_seconds(succ_node.get('timeout',0), succ_node.get('timeout_unit','sec')) if succ_node else None
             err_secs  = self._to_seconds(err_node.get('timeout',0), err_node.get('timeout_unit','sec')) if err_node  else None
@@ -245,6 +247,7 @@ class ActionManager:
                     'observed_topic': None
                 }
 
+            log.debug("Action %s pending branches: %s", act.id, branches)
             log.debug(f"Waiting up to {wait_secs}s for {succ_rt}, {err_rt}")
             got = ev.wait(wait_secs)
             with self._lock:

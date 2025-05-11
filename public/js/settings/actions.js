@@ -347,7 +347,7 @@ async function adaptEvalMatch(prefix) {
   }
 }
 
-// wire it up:
+// whenever the THEN step changes, rebuild both success & error match‐lists
 f.addEventListener("change", e => {
   const n = e.target.name;
   if (n==="succ_device"  || n==="succ_topic") adaptEvalMatch("succ");

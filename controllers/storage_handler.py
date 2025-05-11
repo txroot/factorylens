@@ -129,6 +129,12 @@ class StorageManager:
                 with open(full_path, "wb") as f:
                     f.write(content)
 
+                # publish the “success” enum on file/created
+                result_topic = f"{prefix}/{client_id}/file/created"
+                # since our schema’s type is “enum” of strings, just send the JSON string literal
+                self.client.publish(result_topic, json.dumps("success"))
+                self.flask_app.logger.info(f"[StorageManager] Published success to {result_topic}")
+
                 # Publish file confirmation
                 topic_out = f"{prefix}/{client_id}/file/new"
                 rel_file = os.path.relpath(full_path, base_path)
@@ -148,6 +154,10 @@ class StorageManager:
 
         except Exception as e:
             self.flask_app.logger.error(f"[StorageManager] file/create failed: {e}")
+
+            # tell the UI “error” so your EVALUATE → On Error branch will fire
+            result_topic = f"{prefix}/{client_id}/file/created"
+            self.client.publish(result_topic, json.dumps("error"))
 
     def _poll_loop(self):
         """

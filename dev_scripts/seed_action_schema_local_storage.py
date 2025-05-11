@@ -19,8 +19,12 @@ STORAGE_UNIT_ACTION_SCHEMA = {
             "tooltip":            "Indicates a new file was saved",
             "hint":               "Relative path under the storage unit",
             "explanation":        "Emitted after a successful save; payload is file path",
-            "type":               "string",
-            "values":             [],
+            "type":               "enum",
+            "values":             ["success","error"],
+            "display": {
+                "success": "✅ Success",
+                "error":   "❌ Error"
+            },
             "poll_interval":      0,
             "poll_interval_unit": "sec",
             "poll_topic":         "",
@@ -39,14 +43,25 @@ STORAGE_UNIT_ACTION_SCHEMA = {
             "timeout_unit":  "sec",
             "result_topic":  "file/created",
             "result_payload": {
-                "options": [
+                    "options": [
                     {
-                        "label":     "Stored File Path",
-                        "tooltip":   "Relative path of the saved file",
-                        "hint":      "Used for chaining or audit",
-                        "type":      "string"
+                    "label":   "Outcome",
+                    "tooltip": "Whether the save succeeded or failed",
+                    "hint":    "Use this to route success vs error",
+                    "type":    "enum",
+                    "values":  ["success","error"],
+                    "display": {
+                        "success": "✅ Success",
+                        "error":   "❌ Error"
                     }
-                ]
+                    }
+                ],
+                "details": {
+                    "label":   "Stored File Path",
+                    "tooltip": "Relative path under the storage unit",
+                    "hint":    "Available after a successful save",
+                    "type":    "string"
+                }
             }
         }
     }
