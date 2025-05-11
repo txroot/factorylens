@@ -71,7 +71,7 @@ class CameraManager:
         with self.flask_app.app_context():
             for dev in Device.query.filter_by(enabled=True).all():
                 base = f"{dev.topic_prefix}/{dev.mqtt_client_id}"
-                for suffix in ("snapshot/exe", "snapshot/exe/pdf"):
+                for suffix in ("snapshot/exe"):
                     topic = f"{base}/{suffix}"
                     self.client.subscribe(topic)
                     # register just for this topic
