@@ -53,13 +53,16 @@ class StorageManager:
                 self.client.subscribe(topic)
                 self.client.message_callback_add(topic, self.on_create)
 
+
     def on_create(self, client, userdata, msg):
         """
         Handle incoming file create requests:
-          - decode JSON
-          - decode base64 payload
-          - save to disk
-          - publish confirmation
+        - decode JSON
+        - decode base64 payload
+        - determine destination folder by file extension
+        - normalize base path
+        - save to disk
+        - publish confirmation
         """
         try:
             data = json.loads(msg.payload.decode())
@@ -67,19 +70,36 @@ class StorageManager:
             self.flask_app.logger.info(f"[StorageManager] MQTT← {msg.topic} → Preview: {preview}")
 
             file_b64 = data.get("file")
-            ext      = data.get("ext", "bin").lower().strip(".")
+            ext = data.get("ext", "bin").lower().strip(".")
+            self.flask_app.logger.info(f"[StorageManager] File extension: {ext}")
             name = data.get("name", f"file_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
-            relpath  = data.get("path", None)
 
             if not file_b64:
                 self.flask_app.logger.error("[StorageManager] Missing file payload in request")
                 return
 
-            # base64-decode the content
+            # Decide folder based on file extension
+            image_exts = {"jpg", "jpeg", "png", "gif", "bmp", "webp"}
+            pdf_exts = {"pdf"}
+
+            if ext in image_exts:
+                folder = "images"
+            elif ext in pdf_exts:
+                folder = "pdfs"
+            else:
+                folder = "others"
+
+            # Build relative path (e.g. images/some/path or just images/)
+            relpath = os.path.join(folder, data.get("path", "")) if data.get("path") else folder
+
+            self.flask_app.logger.info(f"[StorageManager] Relative path: {relpath}")
+
+            # Decode base64 file content
             content = base64.b64decode(file_b64)
 
-            # parse topic → extract prefix + client ID
+            # Parse topic and extract device ID
             prefix, client_id, _ = msg.topic.split("/", 2)
+
             with self.flask_app.app_context():
                 dev = Device.query.filter_by(mqtt_client_id=client_id).first()
                 if not dev:
@@ -87,30 +107,41 @@ class StorageManager:
                     return
 
                 self.flask_app.logger.info(f"Device Parameters: {dev.parameters}")
+                self.flask_app.logger.info(f"Device Model: {dev.model.name}")
 
-                # compute target path from device's configured base path
-                base_path = dev.parameters.get("base_path", "/tmp")
-                full_dir  = os.path.join(base_path, os.path.dirname(relpath or "")) if relpath else base_path
+                # Get and normalize base path
+                raw_base = dev.parameters.get("base_path", "tmp").strip("/")
+
+                # If model is "Local storage", prepend /app/storage
+                if dev.model and dev.model.name.lower() == "local storage":
+                    base_path = os.path.normpath(os.path.join("/app/storage", raw_base))
+                else:
+                    base_path = os.path.normpath(f"/{raw_base}")
+
+                # Final full path and file write
+                full_dir = os.path.join(base_path, relpath)
+                self.flask_app.logger.info(f"[StorageManager] Full directory: {full_dir}")
                 os.makedirs(full_dir, exist_ok=True)
 
-                filename  = f"{name}.{ext}"
+                filename = f"{name}.{ext}"
                 full_path = os.path.join(full_dir, filename)
 
                 with open(full_path, "wb") as f:
                     f.write(content)
 
+                # Publish file confirmation
                 topic_out = f"{prefix}/{client_id}/file/new"
-                rel_file  = os.path.relpath(full_path, base_path)
-                payload   = json.dumps({"path": rel_file})
+                rel_file = os.path.relpath(full_path, base_path)
+                payload = json.dumps({"path": rel_file})
                 self.client.publish(topic_out, payload)
                 self.flask_app.logger.info(f"[StorageManager] Saved file to {full_path}")
 
-                # also log event
+                # Log event
                 log_topic = f"{prefix}/{client_id}/log"
                 log = {
-                    "event":     "file_saved",
-                    "filename":  filename,
-                    "path":      rel_file,
+                    "event": "file_saved",
+                    "filename": filename,
+                    "path": rel_file,
                     "timestamp": datetime.utcnow().isoformat()
                 }
                 self.client.publish(log_topic, json.dumps(log))
