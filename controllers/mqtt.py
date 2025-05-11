@@ -105,6 +105,16 @@ def _on_message(client, app, msg):
         if mgr:
             mgr.handle_message(dev.id, topic, payload)
 
+        from controllers.camera_handler import get_camera_manager
+        cam_mgr = get_camera_manager()
+        if cam_mgr:
+            cam_mgr.handle_message(dev.id, topic, payload)
+
+        from controllers.storage_handler import get_storage_manager
+        stor_mgr = get_storage_manager()
+        if stor_mgr:
+            stor_mgr.handle_message(dev.id, topic, payload) 
+
         app.logger.debug("MQTT: Committed updated values for %s with values: %s", dev_id, values)
 
 
@@ -128,6 +138,10 @@ def init_mqtt(app):
     # ─── START CAMERA MANAGER ─────────────────────────────
     from controllers.camera_handler import init_camera_manager
     app.camera_manager = init_camera_manager(client, status_interval=5.0)
+
+    # ─── START STORAGE MANAGER ───────────────────────────
+    from controllers.storage_handler import init_storage_manager
+    app.storage_manager = init_storage_manager(client, status_interval=5.0)
 
     t = threading.Thread(target=client.loop_forever, daemon=True)
     t.start()

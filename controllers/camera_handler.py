@@ -1,3 +1,5 @@
+# controllers/camera_handler.py
+
 import io
 import json
 import base64
@@ -6,13 +8,13 @@ import threading
 import subprocess
 from datetime import datetime, timedelta
 
+from flask import current_app as app
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 
 from extensions import db
 from models.device        import Device
 from models.camera        import Camera
-from models.camera_stream import CameraStream
 
 # ─── Constants ────────────────────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ _UNIT_MULTIPLIERS = {
 # ─── Helpers ─────────────────────────────────────────────────────────────
 
 def _ffmpeg_snapshot(rtsp_url: str, timeout: float = 5.0) -> bytes:
+    """Grab one JPEG frame from RTSP, return its raw bytes, or raise."""
     cmd = [
         'ffmpeg', '-nostdin', '-rtsp_transport', 'tcp',
         '-probesize', '32', '-analyzeduration', '0',
@@ -39,6 +42,7 @@ def _ffmpeg_snapshot(rtsp_url: str, timeout: float = 5.0) -> bytes:
     return data
 
 def _to_pdf(jpeg_bytes: bytes) -> bytes:
+    """Embed a JPEG into a single‐page PDF, return PDF bytes."""
     buf_in  = io.BytesIO(jpeg_bytes)
     img     = ImageReader(buf_in)
     w, h    = img.getSize()
@@ -48,6 +52,7 @@ def _to_pdf(jpeg_bytes: bytes) -> bytes:
     c.showPage()
     c.save()
     return buf_out.getvalue()
+
 
 # ─── CameraManager ──────────────────────────────────────────────────────
 
@@ -65,39 +70,36 @@ class CameraManager:
 
     def _install_subscriptions(self):
         """
-        Subscribe to each camera’s snapshot/exe and snapshot/exe/pdf topics,
-        then attach our on_snapshot() callback to those topics only.
+        Subscribe to each camera’s single command topic: …/snapshot/exe,
+        and register our callback just for that topic.
         """
         with self.flask_app.app_context():
             for dev in Device.query.filter_by(enabled=True).all():
-                base = f"{dev.topic_prefix}/{dev.mqtt_client_id}"
-                for suffix in ("snapshot/exe"):
-                    topic = f"{base}/{suffix}"
-                    self.client.subscribe(topic)
-                    # register just for this topic
-                    self.client.message_callback_add(topic, self.on_snapshot)
+                base    = f"{dev.topic_prefix}/{dev.mqtt_client_id}"
+                topic   = f"{base}/snapshot/exe"
+                self.client.subscribe(topic)
+                self.client.message_callback_add(topic, self.on_snapshot)
 
     def on_snapshot(self, client, userdata, msg):
         """
-        Called only for topics matching “…/snapshot/exe” or “…/snapshot/exe/pdf”.
-        Extract the desired format from payload, then spin off the handler.
+        Only called for “…/snapshot/exe”.
+        Payload is 'jpg' or 'pdf' — spin off the actual work.
         """
-        payload = msg.payload.decode().strip().lower()  # 'jpg' or 'pdf'
-        self.flask_app.logger.info(f"[CameraManager] MQTT← {msg.topic} → {payload!r}")
+        fmt = msg.payload.decode().strip().lower()
+        self.flask_app.logger.info(f"[CameraManager] MQTT← {msg.topic} → {fmt!r}")
         threading.Thread(
             target=self._handle_snapshot,
-            args=(msg.topic, payload),
+            args=(msg.topic, fmt),
             daemon=True
         ).start()
 
     def _handle_snapshot(self, topic: str, fmt: str):
         """
-        Grab a frame, convert if needed, and publish back as JSON with ext+file.
+        Grab a frame, convert if PDF requested, then publish back on “…/snapshot”
+        with JSON `{ext:…, file:…}`.
         """
-        parts     = topic.split('/')
-        prefix    = parts[0]
-        client_id = parts[1]
-        want_pdf  = (fmt == "pdf")
+        prefix, client_id, _ = topic.split('/', 2)
+        want_pdf = (fmt == "pdf")
 
         with self.flask_app.app_context():
             dev = Device.query.filter_by(
@@ -119,8 +121,11 @@ class CameraManager:
                 or next((s for s in cam.streams if s.stream_type=='sub'), None)
                 or next((s for s in cam.streams if s.stream_type=='main'), None)
             )
-            input_url = (stream.full_url or stream.get_full_url(include_auth=True)
-                         if stream else None) or cam.snapshot_url
+            input_url = (
+                (stream.full_url or stream.get_full_url(include_auth=True))
+                if stream else None
+            ) or cam.snapshot_url
+
             if not input_url:
                 self.flask_app.logger.error(f"No snapshot URL for camera {cam.id}")
                 return
@@ -141,11 +146,9 @@ class CameraManager:
             # publish result
             b64       = base64.b64encode(out).decode()
             topic_out = f"{prefix}/{client_id}/snapshot"
-            msg = json.dumps({"ext": ext, "file": b64})
-            self.client.publish(topic_out, msg)
-            self.flask_app.logger.info(
-                f"[CameraManager] MQTT→ {topic_out} ext={ext} size={len(b64)}"
-            )
+            payload   = json.dumps({"ext": ext, "file": b64})
+            self.client.publish(topic_out, payload)
+            self.flask_app.logger.info(f"[CameraManager] MQTT→ {topic_out} ext={ext} size={len(b64)}")
 
             # also log to the camera log topic
             log_topic = f"{prefix}/{client_id}/log"
@@ -157,7 +160,25 @@ class CameraManager:
             }
             self.client.publish(log_topic, json.dumps(log))
 
+    def handle_message(self, device_id: int, topic: str, payload: str):
+        """
+        Legacy entrypoint from your central mqtt loop: feed *every* message here.
+        """
+        # only care about our single command topic
+        # e.g. "cameras/001833/snapshot/exe"
+        if topic.endswith("/snapshot/exe") and payload.lower() in ("jpg","pdf"):
+            # reuse on_snapshot logic
+            class Msg: pass
+            msg = Msg()
+            msg.topic   = topic
+            msg.payload = payload.encode()
+            self.on_snapshot(self.client, None, msg)
+
     def _poll_loop(self):
+        """
+        Periodically probe each camera stream to update status & heartbeat,
+        commit to DB, and log status over MQTT.
+        """
         while True:
             now = datetime.utcnow()
             with self.flask_app.app_context():
@@ -197,6 +218,7 @@ class CameraManager:
 
                         cam.last_heartbeat = now
 
+                        # publish per‐camera status log
                         log_topic = f"{dev.topic_prefix}/{dev.mqtt_client_id}/log"
                         log = {
                             "event":     "status",
@@ -213,11 +235,15 @@ class CameraManager:
                     db.session.commit()
             time.sleep(1.0)
 
-# ─── Initialization ────────────────────────────────────────────────────
+
+# ─── Singleton holder ───────────────────────────────────────────────────
 
 _manager = None
 
 def init_camera_manager(mqtt_client, status_interval=None):
     global _manager
     _manager = CameraManager(mqtt_client)
+    return _manager
+
+def get_camera_manager():
     return _manager
