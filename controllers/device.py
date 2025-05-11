@@ -252,8 +252,9 @@ def delete_device(dev_id):
 # ── JSON‐SCHEMA FOR THE CONFIG TAB ─────────────────────────────────
 def get_device_schema(model_id):
     model = DeviceModel.query.get_or_404(model_id)
-    if model.schema:
-        return jsonify(model.schema.json_schema)
+    schema = model.get_schema("config")
+    if schema:
+        return jsonify(schema.schema)
     return jsonify({})
 
 

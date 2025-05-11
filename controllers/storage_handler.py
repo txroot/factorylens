@@ -68,7 +68,7 @@ class StorageManager:
 
             file_b64 = data.get("file")
             ext      = data.get("ext", "bin").lower().strip(".")
-            name     = data.get("name", f"file_{int(time.time())}")
+            name = data.get("name", f"file_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
             relpath  = data.get("path", None)
 
             if not file_b64:
