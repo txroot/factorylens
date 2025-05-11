@@ -9,14 +9,34 @@ from flask import current_app as app
 from models.actions import Action as ActionModel
 from models.device  import Device
 
+def payload_preview(data, max_length=100):
+    """
+    Generate a summarized preview of any JSON data.
+    For dicts, trims long string values.
+    For other types, returns a safe summary.
+    """
+    if isinstance(data, dict):
+        preview = {}
+        for k, v in data.items():
+            if isinstance(v, str) and len(v) > max_length:
+                preview[k] = f"[{len(v)} chars]"
+            else:
+                preview[k] = v
+        return preview
+    elif isinstance(data, list):
+        return [payload_preview(item, max_length) if isinstance(item, dict) else item for item in data[:5]]
+    elif isinstance(data, str) and len(data) > max_length:
+        return f"[{len(data)} chars]"
+    else:
+        return data
 
 # ─── Helpers ───────────────────────────────────────────────────────────
 
 def _extract_event(raw: str) -> str:
     """
-    If the payload is JSON with an "event" field, return that;
-    else if it has an "ext" field (file snapshot), return that;
-    otherwise just return the raw string.
+    Extract a simplified string from a raw payload for comparison.
+    If the payload is JSON with 'event' or 'ext', return that value;
+    otherwise, return the raw string itself.
     """
     try:
         j = json.loads(raw)
@@ -31,8 +51,8 @@ def _extract_event(raw: str) -> str:
 
 def _compare(raw: str, expected: str, op: str) -> bool:
     """
-    Compare `raw` and `expected` using op.
-    If both parse as floats, do numeric compare; otherwise string compare.
+    Compare `raw` and `expected` using the given operator.
+    Tries numeric comparison first; falls back to string comparison.
     """
     try:
         a = float(raw)
@@ -53,11 +73,12 @@ def _compare(raw: str, expected: str, op: str) -> bool:
 
 class ActionWrapper:
     def __init__(self, model: ActionModel):
-        self.id         = model.id
-        self.name       = model.name
-        self.chain      = model.chain
-        self.state      = "idle"    # idle, running, success, error
-        self.if_payload = None        # triggering payload
+        self.id          = model.id
+        self.name        = model.name
+        self.chain       = model.chain
+        self.state       = "idle"  # idle, running, success, error
+        self.if_payload  = None    # full raw triggering payload (used if $IF is passed)
+        self.if_extracted= None    # extracted value used in comparisons
 
     def __repr__(self):
         return f"<Action #{self.id} '{self.name}' state={self.state}>"
@@ -67,18 +88,17 @@ class ActionWrapper:
 
 class ActionManager:
     def __init__(self, mqtt_client, status_interval: float = 30.0):
-        self.client    = mqtt_client
-        self.flask_app = getattr(mqtt_client, "_userdata", None)
-        self.interval  = status_interval
+        self.client     = mqtt_client
+        self.flask_app  = getattr(mqtt_client, "_userdata", None)
+        self.interval   = status_interval
 
-        self._pending = {}  # action_id → pending info
-        self._lock    = threading.Lock()
-        self.actions  = {}
+        self._pending   = {}  # action_id → pending info
+        self._lock      = threading.Lock()
+        self.actions    = {}
 
         self._load_actions()
         self._install_subscriptions()
 
-        # periodic status broadcast
         threading.Thread(target=self._status_loop, daemon=True).start()
 
     def _load_actions(self):
@@ -89,20 +109,15 @@ class ActionManager:
             app.logger.info(f"✅ Loaded {len(self.actions)} Actions")
 
     def _install_subscriptions(self):
-        """
-        Subscribe & register callbacks for each action's command and result topics.
-        """
         with self.flask_app.app_context():
             for act in self.actions.values():
                 for node in act.chain:
                     dev = Device.query.get(node["device_id"])
                     if not dev or not dev.topic_prefix or not dev.mqtt_client_id:
                         continue
-                    # command topic
                     cmd_topic = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{node['topic']}"
                     self.client.subscribe(cmd_topic)
                     self.client.message_callback_add(cmd_topic, self.on_message)
-                    # result topic if present
                     rt = node.get("result_topic", "")
                     if rt:
                         res_topic = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{rt}"
@@ -122,9 +137,6 @@ class ActionManager:
         self.client.publish(f"actions/{act.id}/status", new_state)
 
     def handle_message(self, device_id: int, topic: str, payload: str):
-        """
-        Legacy entrypoint from controllers/mqtt: wrap raw topic+payload into on_message.
-        """
         class Msg: pass
         msg = Msg()
         msg.topic   = topic
@@ -132,18 +144,17 @@ class ActionManager:
         self.on_message(self.client, None, msg)
 
     def on_message(self, client, userdata, msg):
-        """
-        Callback for both command and result topics:
-         1) wake any pending THEN
-         2) handle IF triggers
-        """
         with self.flask_app.app_context():
-            raw     = msg.payload.decode()
+            try:
+                raw = msg.payload.decode()
+            except UnicodeDecodeError:
+                self.flask_app.logger.warning(f"[ActionManager] Ignoring binary message on topic: {msg.topic}")
+                return
             payload = _extract_event(raw)
             topic   = msg.topic
             log     = app.logger
 
-            # 1) wake pending THEN
+            # Wake up any waiting THEN steps
             with self._lock:
                 for aid, pend in list(self._pending.items()):
                     for br, info in pend['branches'].items():
@@ -153,7 +164,7 @@ class ActionManager:
                             pend['event'].set()
                             break
 
-            # 2) IF triggers
+            # Handle IF triggers
             for act in self.actions.values():
                 if act.state != 'idle':
                     continue
@@ -172,10 +183,11 @@ class ActionManager:
                     log.info(f"🔥 IF triggered for '{act.name}' (#{act.id})")
                     self.client.publish(
                         "actions/if/trigger",
-                        json.dumps({"action_id": act.id, "topic": topic, "payload": payload})
+                        json.dumps({"action_id": act.id, "topic": topic, "payload": raw})
                     )
                     self._set_state(act, 'running')
-                    act.if_payload = payload
+                    act.if_payload   = raw
+                    act.if_extracted = payload
                     threading.Thread(target=self._execute_then, args=(act,), daemon=True).start()
 
     def _execute_then(self, act: ActionWrapper):
@@ -188,17 +200,17 @@ class ActionManager:
                 self._set_state(act, 'error')
                 return
 
-            # publish THEN command
+            # Publish THEN command; use full raw IF payload if $IF is selected
             full_cmd = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{then['topic']}"
             cmd      = then['command'] if then['command'] != '$IF' else act.if_payload or ''
             self.client.publish(
                 "actions/then/command",
                 json.dumps({"action_id": act.id, "topic": full_cmd, "command": cmd})
             )
-            log.debug(f"→ [THEN] Pub {full_cmd} → {cmd!r}")
+            log.debug(f"→ [THEN] Pub {full_cmd} → {payload_preview(cmd)!r}")
             self.client.publish(full_cmd, cmd)
 
-            # gather eval branches
+            # Setup EVALUATE
             branches = [n for n in act.chain if n.get('branch') in ('success','error')]
             if not branches:
                 self._set_state(act, 'success')
@@ -245,7 +257,7 @@ class ActionManager:
                 json.dumps({"action_id":act.id, "result_topic":(succ_rt or err_rt) or "", "matched":bool(got), "payload":observed})
             )
 
-            # choose branch
+            # Choose branch
             chosen=None
             if got and observed is not None:
                 err_info = pend['branches'].get('error')

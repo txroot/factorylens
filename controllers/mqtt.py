@@ -6,6 +6,7 @@ import paho.mqtt.client as mqtt
 from extensions import db
 from models.device import Device
 import math
+import json
 
 _MQTT_HOST  = os.getenv("MQTT_HOST", "localhost")
 _MQTT_PORT  = int(os.getenv("MQTT_PORT", 1883))
@@ -18,6 +19,27 @@ def _on_connect(client, app, flags, rc, properties=None):
     client.subscribe("shellies/+/+/#")
 
 
+def payload_preview(data, max_length=100):
+    """
+    Generate a summarized preview of any JSON data.
+    For dicts, trims long string values.
+    For other types, returns a safe summary.
+    """
+    if isinstance(data, dict):
+        preview = {}
+        for k, v in data.items():
+            if isinstance(v, str) and len(v) > max_length:
+                preview[k] = f"[{len(v)} chars]"
+            else:
+                preview[k] = v
+        return preview
+    elif isinstance(data, list):
+        return [payload_preview(item, max_length) if isinstance(item, dict) else item for item in data[:5]]
+    elif isinstance(data, str) and len(data) > max_length:
+        return f"[{len(data)} chars]"
+    else:
+        return data
+
 def _on_message(client, app, msg):
     with app.app_context():
 
@@ -25,7 +47,13 @@ def _on_message(client, app, msg):
         payload = msg.payload.decode()
         parts   = topic.split("/")
 
-        app.logger.debug("MQTT → New message: %s → %s", topic, payload)
+        try:
+            parsed_payload = json.loads(payload)
+            preview = payload_preview(parsed_payload)
+        except json.JSONDecodeError:
+            preview = payload  # fallback: show raw string if not JSON
+
+        app.logger.debug("MQTT → New message: %s → %s", topic, preview)
 
         if len(parts) < 3:                      # shellies/<id>/<group>/...
             return
