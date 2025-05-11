@@ -125,6 +125,10 @@ def init_mqtt(app):
     from controllers.actions_handler import init_action_manager
     app.action_manager = init_action_manager(client, status_interval=5.0)
 
+    # ─── START CAMERA MANAGER ─────────────────────────────
+    from controllers.camera_handler import init_camera_manager
+    app.camera_manager = init_camera_manager(client, status_interval=5.0)
+
     t = threading.Thread(target=client.loop_forever, daemon=True)
     t.start()
 

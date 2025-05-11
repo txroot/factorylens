@@ -158,7 +158,7 @@ async function loadTopics(devId, prefix) {
 }
 
 // ─── Swap in correct input & handle custom poll/timeout & hidden fields ─
-function adaptInput(prefix) {
+async function adaptInput(prefix) {
   const eventSel = f[`${prefix}_event_topic`];
   if (!eventSel) return;
   const opt     = eventSel.selectedOptions[0];
@@ -177,62 +177,56 @@ function adaptInput(prefix) {
     hiddenSel.disabled = true;
   }
 
-  // reset input
+  // reset comparator + input container
   cCol?.classList.add("d-none");
   vCol.innerHTML = `
     <label class="form-label">
-      ${prefix==="trigger" ? "Value" : "Payload"} *
+      ${prefix === "trigger" ? "Value" : "Payload"} *
     </label>
-    <input name="${prefix==="trigger" ? "trigger_value" : `${prefix}_command`}"
-           class="form-control" required>`;
+    <input name="${prefix === "trigger" ? "trigger_value" : `${prefix}_command`}" class="form-control" required>`;
   const inp = vCol.querySelector("input");
   inp?.removeAttribute("disabled");
 
-  // enum/bool
-  if (m.type==="enum"||m.type==="bool") {
-    const opts = m.type==="bool"?["true","false"]:m.values;
-
-    // Is this the result node AND the trigger has the same type?
-    const sameAsIf = (prefix==="result"
-      && outType                     // set earlier by trigger
-      && outType === m.type);        // compatible
-    
+  // handle enum, bool, file
+  if (m.type === "enum" || m.type === "bool" || m.type === "file") {
+    // choose options for file as well
+    const opts = m.type === "bool" ? ["true","false"] : m.values;
+    // same-as-if only for result and when compatible
+    const sameAsIf = (prefix === "result" && outType && outType === m.type);
     vCol.innerHTML = `
       <label class="form-label">
-        ${prefix==="trigger" ? "Value" : "Payload"} *
+        ${prefix === "trigger" ? "Value" : "Payload"} *
       </label>
-      <select name="${prefix==="trigger" ? "trigger_value" : `${prefix}_command`}"
-              class="form-select" required>
+      <select name="${prefix === "trigger" ? "trigger_value" : `${prefix}_command`}" class="form-select" required>
         <option disabled selected value="">—</option>
-        ${sameAsIf ? `<option value="$IF">{{ _('Same as IF') }}</option>` : ''}
-        ${opts.map(v=>`<option value="${v}">${m.display?.[v]||v}</option>`).join("")}
+        ${sameAsIf ? `<option value="$IF">Same as IF</option>` : ''}
+        ${opts.map(v => `<option value="${v}">${m.display?.[v]||v}</option>`).join('')}
       </select>`;
-    if (prefix==="trigger") { outType = m.type; buildResultDevices(); }
+    if (prefix === "trigger") { outType = m.type; buildResultDevices(); }
   }
-  // number
-  else if (m.type==="number") {
+  // handle number
+  else if (m.type === "number") {
     if (cCol) {
       cCol.classList.remove("d-none");
       cCol.innerHTML = `
         <label class="form-label">Cmp.</label>
         <select name="${prefix}_cmp" class="form-select">
-          ${(m.comparators||["<","<=","==","!="," >=",">"])
-             .map(c=>`<option value="${c}">${c}</option>`).join("")}
+          ${(m.comparators||["<","<=","==","!=",">=", ">"]) .map(c => `<option value="${c}">${c}</option>`).join('')}
         </select>`;
     }
     if (inp) {
       const [min,max] = m.range||[null,null];
-      if (min!==null) inp.min = min;
-      if (max!==null) inp.max = max;
+      if (min !== null) inp.min = min;
+      if (max !== null) inp.max = max;
       inp.type = "number";
       if (m.units) inp.placeholder = m.units;
     }
-    if (prefix==="trigger") { outType = m.type; buildResultDevices(); }
+    if (prefix === "trigger") { outType = m.type; buildResultDevices(); }
   }
 
   // custom poll (trigger)
-  if (prefix==="trigger") {
-    if (m.poll_interval>0) {
+  if (prefix === "trigger") {
+    if (m.poll_interval > 0) {
       triggerPollRow.classList.remove("d-none");
       triggerPollChk.checked = false;
       f.trigger_poll_value.value = m.poll_interval;
@@ -246,7 +240,7 @@ function adaptInput(prefix) {
 
   // custom timeout (result/succ/err)
   ["result","succ","err"].forEach(p => {
-    if (prefix===p && m.timeout>0) {
+    if (prefix === p && m.timeout > 0) {
       const row = p==="result" ? resultTimeoutRow
                 : p==="succ"   ? succTimeoutRow
                                : errTimeoutRow;
