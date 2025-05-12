@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
-
-# dev_scripts/seed_device_catalog.py
 """
 Seed initial DeviceCategory, DeviceModel and DeviceSchema rows.
-
-Run once (or make idempotent by default) after the tables exist.
+Run once (or repeatedly) after the tables exist.
 """
 import os
 import sys
-import json
 from pathlib import Path
 
 # Add project root to import path
-sys.path.insert(0, Path(__file__).resolve().parents[1].as_posix())
+top = Path(__file__).resolve().parents[1].as_posix()
+if top not in sys.path:
+    sys.path.insert(0, top)
 
 from app import create_app
 from extensions import db
@@ -22,31 +20,92 @@ from models.device_schema   import DeviceSchema
 
 # Define your categories (slug, label)
 CATEGORIES = [
-    ("camera",        "📷 Camera"),
-    ("messenger",     "✉️ Messenger"),
-    ("module",        "📦 Module"),
-    ("iot",           "🌐 IoT Device"),
-    ("logger",        "📝 Logger"),
-    ("storage",       "💾 Storage Unit"),
-    ("processor",     "🧠 AI Processor"),
+    ("camera",   "📷 Camera"),
+    ("iot",      "🌐 IoT Device"),
+    ("storage",  "💾 Storage Unit"),
+    ("messenger","✉️ Messenger"),
+    ("module",   "📦 Module"),
+    ("logger",   "📝 Logger"),
+    ("processor","🧠 AI Processor"),
 ]
 
 # Map of category slug → list of (model name, notes)
 MODELS = {
-    "iot": [
-        ("Shelly 1",     "Shelly 1 Wi-Fi relay"),
-        ("Shelly 2",     "Shelly 2 dual relay"),
-    ],
     "camera": [
         ("Reolink 810A",     "Reolink 8 MP PoE camera"),
         ("Hilook IPC-B140H", "Hilook 4 MP bullet camera"),
     ],
+    "iot": [
+        ("Shelly 1", "Shelly 1 Wi-Fi relay"),
+        ("Shelly 2", "Shelly 2 dual relay"),
+    ],
 }
 
-# JSON-Schema for Hilook IPC-B140H
-HILOOK_SCHEMA = {
+# JSON-Schema for Reolink 810A configuration
+REOLINK_810A_CONFIG = {
   "type": "object",
-  "title": "Camera configuration",
+  "title": "Reolink 810A configuration",
+  "properties": {
+    "address": {
+      "type": "string",
+      "title": "Camera IP / Host",
+      "format": "hostname",
+      "minLength": 7
+    },
+    "port": {
+      "type": "integer",
+      "title": "RTSP Port",
+      "default": 554,
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "username": {
+      "type": "string",
+      "title": "Username"
+    },
+    "password": {
+      "type": "string",
+      "title": "Password",
+      "format": "password"
+    },
+    "main_stream_url": {
+      "type": "string",
+      "title": "Main RTSP Stream URL",
+      "format": "uri",
+      "default": "rtsp://{username}:{password}@{address}:{port}/h264Preview_01_main"
+    },
+    "sub_stream_url": {
+      "type": "string",
+      "title": "Sub RTSP Stream URL",
+      "format": "uri",
+      "default": "rtsp://{username}:{password}@{address}:{port}/h264Preview_01_sub"
+    },
+    "snapshot_url": {
+      "type": "string",
+      "title": "Snapshot URL",
+      "format": "uri",
+      "default": "http://{address}/cgi-bin/api.cgi?cmd=Snap&channel=0&rs=<token>&user={username}&password={password}"
+    },
+    "snapshot_width": {
+      "type": "integer",
+      "title": "Snapshot Width (px)",
+      "default": 1920,
+      "minimum": 1
+    },
+    "snapshot_height": {
+      "type": "integer",
+      "title": "Snapshot Height (px)",
+      "default": 1080,
+      "minimum": 1
+    }
+  },
+  "required": ["address", "username", "password", "main_stream_url", "snapshot_url"]
+}
+
+# JSON-Schema for Hilook IPC-B140H configuration
+HILOOK_IPC_B140H_CONFIG = {
+  "type": "object",
+  "title": "Hilook IPC-B140H configuration",
   "properties": {
     "address":  { "type": "string",  "title": "IP / host", "minLength": 1 },
     "port":     { "type": "integer", "default": 554, "minimum": 1, "maximum": 65535 },
@@ -78,23 +137,18 @@ HILOOK_SCHEMA = {
 def upsert(instance, uniq_attrs):
     """
     Insert or update a row so script can be run repeatedly.
-    - instance: a new model instance (not yet in session)
-    - uniq_attrs: list of attribute names that uniquely identify the row
-    Returns: (existing_or_new_instance, True_if_inserted)
+    Returns: (instance, True if inserted, False if updated)
     """
-    model = type(instance)
-    filters = {a: getattr(instance, a) for a in uniq_attrs}
-    existing = model.query.filter_by(**filters).first()
-
+    cls = type(instance)
+    filters = {attr: getattr(instance, attr) for attr in uniq_attrs}
+    existing = cls.query.filter_by(**filters).first()
     if existing:
-        # avoid touching primary key or unique attrs
-        pk_cols = {c.name for c in instance.__table__.primary_key}
-        for col in instance.__table__.columns.keys():
-            if col in uniq_attrs or col in pk_cols:
+        pk = {c.name for c in cls.__table__.primary_key}
+        for col in cls.__table__.columns.keys():
+            if col in uniq_attrs or col in pk:
                 continue
             setattr(existing, col, getattr(instance, col))
         return existing, False
-
     db.session.add(instance)
     return instance, True
 
@@ -102,15 +156,14 @@ def upsert(instance, uniq_attrs):
 def seed():
     app = create_app()
     with app.app_context():
-        # 1. Seed categories
+        # 1) Seed categories
         cat_map = {}
         for slug, label in CATEGORIES:
             cat, created = upsert(DeviceCategory(name=slug, label=label), ["name"])
             cat_map[slug] = cat
         db.session.flush()
 
-        # 2. Seed models
-        hilook_model = None
+        # 2) Seed models
         for cat_slug, models in MODELS.items():
             for name, notes in models:
                 mdl, created = upsert(
@@ -121,22 +174,39 @@ def seed():
                     ),
                     ["name"]
                 )
-                if name.startswith("Hilook"):
-                    hilook_model = mdl
         db.session.flush()
 
-        # 3. Attach schema to Hilook model
-        if hilook_model and not hilook_model.schema:
-            schema = DeviceSchema(
-                json_schema=HILOOK_SCHEMA,
-                ui_hints={},
-                version="1.0.0"
+        # 3) Attach config schemas for camera models
+        # Reolink 810A
+        reolink = DeviceModel.query.filter_by(name="Reolink 810A").first()
+        if reolink and not reolink.get_schema("config"):
+            cfg, _ = upsert(
+                DeviceSchema(
+                    model_id=reolink.id,
+                    kind="config",
+                    schema=REOLINK_810A_CONFIG,
+                    version="1.0.0"
+                ),
+                ["model_id","kind"]
             )
-            hilook_model.schema = schema
-            db.session.add(schema)
+            print("✅ Seeded Reolink 810A config schema")
+
+        # Hilook IPC-B140H
+        hilook = DeviceModel.query.filter_by(name="Hilook IPC-B140H").first()
+        if hilook and not hilook.get_schema("config"):
+            cfg, _ = upsert(
+                DeviceSchema(
+                    model_id=hilook.id,
+                    kind="config",
+                    schema=HILOOK_IPC_B140H_CONFIG,
+                    version="1.0.0"
+                ),
+                ["model_id","kind"]
+            )
+            print("✅ Seeded Hilook IPC-B140H config schema")
 
         db.session.commit()
-        print("Seed completed successfully.")
+        print("🎉 Device catalog seed completed successfully.")
 
 
 if __name__ == "__main__":

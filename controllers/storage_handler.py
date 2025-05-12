@@ -43,16 +43,23 @@ class StorageManager:
     def _install_subscriptions(self):
         """
         Subscribe to storage-related topics for all devices, e.g.:
-          cameras/abc123/file/image/create
+        cameras/abc123/file/image/create
         """
         with self.flask_app.app_context():
             for dev in Device.query.filter_by(enabled=True).all():
+                # skip any device missing its topic prefix or client ID
+                if not dev.topic_prefix or not dev.mqtt_client_id:
+                    self.flask_app.logger.info(
+                        f"[StorageManager] Skipping device {dev.id} "
+                        f"(prefix={dev.topic_prefix!r}, client_id={dev.mqtt_client_id!r})"
+                    )
+                    continue
+
                 base  = f"{dev.topic_prefix}/{dev.mqtt_client_id}"
                 topic = f"{base}/file/+/create"
                 self.flask_app.logger.info(f"[StorageManager] Subscribing to {topic}")
                 self.client.subscribe(topic)
                 self.client.message_callback_add(topic, self.on_create)
-
 
     def on_create(self, client, userdata, msg):
         """

@@ -1,11 +1,10 @@
-# controllers/camera_handler.py
-
 import io
 import json
 import base64
 import time
 import threading
 import subprocess
+import requests
 from datetime import datetime, timedelta
 
 from flask import current_app as app
@@ -13,8 +12,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 
 from extensions import db
-from models.device        import Device
-from models.camera        import Camera
+from models.device import Device
+from models.camera import Camera
 
 # ─── Constants ────────────────────────────────────────────────────────────
 
@@ -30,6 +29,7 @@ _UNIT_MULTIPLIERS = {
 
 def _ffmpeg_snapshot(rtsp_url: str, timeout: float = 5.0) -> bytes:
     """Grab one JPEG frame from RTSP, return its raw bytes, or raise."""
+    app.logger.debug(f"[CameraManager] FFmpeg fetching frame from {rtsp_url}")
     cmd = [
         'ffmpeg', '-nostdin', '-rtsp_transport', 'tcp',
         '-probesize', '32', '-analyzeduration', '0',
@@ -39,10 +39,12 @@ def _ffmpeg_snapshot(rtsp_url: str, timeout: float = 5.0) -> bytes:
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     data, _ = proc.communicate(timeout=timeout)
+    app.logger.info(f"[CameraManager] FFmpeg snapshot size={len(data)} bytes")
     return data
 
 def _to_pdf(jpeg_bytes: bytes) -> bytes:
     """Embed a JPEG into a single‐page PDF, return PDF bytes."""
+    app.logger.info(f"[CameraManager] Converting JPEG of size={len(jpeg_bytes)} to PDF")
     buf_in  = io.BytesIO(jpeg_bytes)
     img     = ImageReader(buf_in)
     w, h    = img.getSize()
@@ -51,8 +53,9 @@ def _to_pdf(jpeg_bytes: bytes) -> bytes:
     c.drawImage(img, 0, 0, width=w, height=h)
     c.showPage()
     c.save()
-    return buf_out.getvalue()
-
+    pdf_bytes = buf_out.getvalue()
+    app.logger.info(f"[CameraManager] PDF conversion size={len(pdf_bytes)} bytes")
+    return pdf_bytes
 
 # ─── CameraManager ──────────────────────────────────────────────────────
 
@@ -115,24 +118,35 @@ class CameraManager:
                 self.flask_app.logger.error(f"No Camera row for Device {dev.name}")
                 return
 
-            # build snapshot URL
-            stream = (
-                cam.default_stream
-                or next((s for s in cam.streams if s.stream_type=='sub'), None)
-                or next((s for s in cam.streams if s.stream_type=='main'), None)
-            )
-            input_url = (
-                (stream.full_url or stream.get_full_url(include_auth=True))
-                if stream else None
-            ) or cam.snapshot_url
+            # Determine which URL to use: HTTP snapshot_url for Reolink, else RTSP
+            if cam.snapshot_url:
+                input_is_http = cam.snapshot_url.lower().startswith(('http://','https://'))
+                input_url = cam.snapshot_url
+                self.flask_app.logger.info(f"[CameraManager] Using HTTP snapshot_url for cam {cam.id}: {input_url}")
+            else:
+                # fall back to RTSP streams
+                stream = (
+                    cam.default_stream
+                    or next((s for s in cam.streams if s.stream_type=='sub'), None)
+                    or next((s for s in cam.streams if s.stream_type=='main'), None)
+                )
+                if not stream:
+                    self.flask_app.logger.error(f"No stream or snapshot URL for camera {cam.id}")
+                    return
+                input_url = (stream.full_url or stream.get_full_url(include_auth=True))
+                input_is_http = False
+                self.flask_app.logger.info(f"[CameraManager] Using RTSP URL for cam {cam.id}: {input_url}")
 
-            if not input_url:
-                self.flask_app.logger.error(f"No snapshot URL for camera {cam.id}")
-                return
-
-            # capture JPEG
+            # fetch JPEG
             try:
-                jpg = _ffmpeg_snapshot(input_url)
+                if input_is_http:
+                    self.flask_app.logger.debug(f"[CameraManager] HTTP GET snapshot_url {input_url}")
+                    resp = requests.get(input_url, timeout=5)
+                    resp.raise_for_status()
+                    jpg = resp.content
+                    self.flask_app.logger.info(f"[CameraManager] HTTP snapshot returned status={resp.status_code}, bytes={len(jpg)}")
+                else:
+                    jpg = _ffmpeg_snapshot(input_url)
             except Exception as e:
                 self.flask_app.logger.error(f"Snapshot failed for cam {cam.id}: {e}")
                 return
@@ -148,7 +162,7 @@ class CameraManager:
             topic_out = f"{prefix}/{client_id}/snapshot"
             payload   = json.dumps({"ext": ext, "file": b64})
             self.client.publish(topic_out, payload)
-            self.flask_app.logger.info(f"[CameraManager] MQTT→ {topic_out} ext={ext} size={len(b64)}")
+            self.flask_app.logger.info(f"[CameraManager] MQTT→ {topic_out} ext={ext} size={len(b64)} chars")
 
             # also log to the camera log topic
             log_topic = f"{prefix}/{client_id}/log"
@@ -162,12 +176,9 @@ class CameraManager:
 
     def handle_message(self, device_id: int, topic: str, payload: str):
         """
-        Legacy entrypoint from your central mqtt loop: feed *every* message here.
+        Legacy entrypoint: feed *every* message here.
         """
-        # only care about our single command topic
-        # e.g. "cameras/001833/snapshot/exe"
         if topic.endswith("/snapshot/exe") and payload.lower() in ("jpg","pdf"):
-            # reuse on_snapshot logic
             class Msg: pass
             msg = Msg()
             msg.topic   = topic
@@ -194,31 +205,34 @@ class CameraManager:
                     device_status = 'online'
 
                     for cam in cams:
-                        stream = (
-                            cam.default_stream
-                            or (cam.streams[0] if cam.streams else None)
-                        )
-                        if not stream:
-                            cam.status = 'error'
+                        if cam.snapshot_url:
+                            cam.status = 'online'
                         else:
-                            url = stream.full_url or stream.get_full_url(include_auth=True)
-                            try:
-                                subprocess.check_output([
-                                    "ffprobe", "-v", "error",
-                                    "-rtsp_transport", "tcp",
-                                    "-timeout", "1500000",
-                                    "-analyzeduration", "0",
-                                    "-probesize", "32",
-                                    "-i", url
-                                ], timeout=2)
-                                cam.status = 'online'
-                            except Exception:
-                                cam.status = 'offline'
+                            stream = (
+                                cam.default_stream
+                                or (cam.streams[0] if cam.streams else None)
+                            )
+                            if not stream:
+                                cam.status = 'error'
                                 device_status = 'offline'
+                            else:
+                                url = stream.full_url or stream.get_full_url(include_auth=True)
+                                try:
+                                    subprocess.check_output([
+                                        "ffprobe", "-v", "error",
+                                        "-rtsp_transport", "tcp",
+                                        "-timeout", "1500000",
+                                        "-analyzeduration", "0",
+                                        "-probesize", "32",
+                                        "-i", url
+                                    ], timeout=2)
+                                    cam.status = 'online'
+                                except Exception:
+                                    cam.status = 'offline'
+                                    device_status = 'offline'
 
                         cam.last_heartbeat = now
 
-                        # publish per‐camera status log
                         log_topic = f"{dev.topic_prefix}/{dev.mqtt_client_id}/log"
                         log = {
                             "event":     "status",
