@@ -232,7 +232,7 @@ class ActionManager:
                 "actions/then/command",
                 json.dumps({"action_id": act.id, "topic": full_cmd, "command": cmd})
             )
-            log.debug(f"→ [THEN] Pub {full_cmd} → {payload_preview(cmd)!r}")
+            log.debug(f"\n→ [THEN] Pub {full_cmd} → {payload_preview(cmd)!r}\n")
             self.client.publish(full_cmd, cmd)
 
             # if no branches, done

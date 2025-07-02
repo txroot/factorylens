@@ -34,6 +34,7 @@ MODELS = {
     "camera": [
         ("Reolink 810A",     "Reolink 8 MP PoE camera"),
         ("Hilook IPC-B140H", "Hilook 4 MP bullet camera"),
+        ("Hikvision IPC-B640HA-LZU","Hikvision 4 MP dual-light bullet"),
     ],
     "iot": [
         ("Shelly 1", "Shelly 1 Wi-Fi relay"),
@@ -133,6 +134,41 @@ HILOOK_IPC_B140H_CONFIG = {
   "required": ["address","stream_url_suffix"]
 }
 
+# JSON-Schema for Hikvision IPC-B640HA-LZU configuration
+HIKVISION_B640HA_CONFIG = {
+  "type": "object",
+  "title": "Hikvision IPC-B640HA-LZU configuration",
+  "properties": {
+    "address":  { "type": "string",  "title": "IP / host", "format": "hostname" },
+    "port":     { "type": "integer", "title": "RTSP port", "default": 554, "minimum": 1, "maximum": 65535 },
+    "username": { "type": "string" },
+    "password": { "type": "string", "format": "password" },
+    "stream_type": {
+      "type": "string",
+      "enum": ["primary","sub","fluent","custom"],
+      "default": "primary"
+    },
+    "main_stream_url": {
+      "type": "string",
+      "title": "Main RTSP Stream URL",
+      "format": "uri",
+      "default": "rtsp://{username}:{password}@{address}:{port}/Streaming/Channels/101"
+    },
+    "sub_stream_url": {
+      "type": "string",
+      "title": "Sub RTSP Stream URL",
+      "format": "uri",
+      "default": "rtsp://{username}:{password}@{address}:{port}/Streaming/Channels/102"
+    },
+    "snapshot_url": {
+      "type": "string",
+      "title": "Snapshot URL",
+      "format": "uri",
+      "default": "http://{address}/ISAPI/Streaming/channels/1/picture"
+    }
+  },
+  "required": ["address", "username", "password", "main_stream_url", "snapshot_url"]
+}
 
 def upsert(instance, uniq_attrs):
     """
@@ -208,6 +244,19 @@ def seed():
         db.session.commit()
         print("🎉 Device catalog seed completed successfully.")
 
+        # Hikvision IPC-B640HA-LZU
+        hikvision = DeviceModel.query.filter_by(name="Hikvision IPC-B640HA-LZU").first()
+        if hikvision and not hikvision.get_schema("config"):
+            cfg, _ = upsert(
+                DeviceSchema(
+                    model_id=hikvision.id,
+                    kind="config",
+                    schema=HIKVISION_B640HA_CONFIG,
+                    version="1.0.0"
+                ),
+                ["model_id","kind"]
+            )
+            print("✅ Seeded Hikvision IPC-B640HA-LZU config schema")
 
 if __name__ == "__main__":
     seed()

@@ -1,3 +1,4 @@
+# controllers/camera_handler.py
 import io
 import json
 import base64
@@ -6,6 +7,9 @@ import threading
 import subprocess
 import requests
 from datetime import datetime, timedelta
+
+from requests.auth import HTTPDigestAuth, HTTPBasicAuth
+import urllib.parse as urlparse
 
 from flask import current_app as app
 from reportlab.pdfgen import canvas
@@ -96,11 +100,15 @@ class CameraManager:
             daemon=True
         ).start()
 
-    def _handle_snapshot(self, topic: str, fmt: str):
+    def _handle_snapshot0(self, topic: str, fmt: str):
         """
         Grab a frame, convert if PDF requested, then publish back on “…/snapshot”
         with JSON `{ext:…, file:…}`.
         """
+
+        # log
+        self.flask_app.logger.info(f"\n[CameraManager] Handling snapshot request for topic {topic} with format {fmt}\n")
+
         prefix, client_id, _ = topic.split('/', 2)
         want_pdf = (fmt == "pdf")
 
@@ -167,6 +175,126 @@ class CameraManager:
             # also log to the camera log topic
             log_topic = f"{prefix}/{client_id}/log"
             log = {
+                "event":     "snapshot",
+                "camera_id": cam.id,
+                "ext":       ext,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            self.client.publish(log_topic, json.dumps(log))
+
+    def _handle_snapshot(self, topic: str, fmt: str):
+        """
+        Grab a frame, convert to PDF if requested, then publish back on “…/snapshot”
+        with JSON {ext, file}. Supports HTTP-Digest, Basic, or no auth.
+        """
+        self.flask_app.logger.info(
+            f"\n[CameraManager] Handling snapshot request for topic {topic} "
+            f"with format {fmt}\n"
+        )
+        prefix, client_id, _ = topic.split('/', 2)
+        want_pdf = (fmt == "pdf")
+
+        with self.flask_app.app_context():
+            # ── Locate Device + Camera ------------------------------------------------
+            dev = Device.query.filter_by(
+                topic_prefix=prefix,
+                mqtt_client_id=client_id
+            ).first()
+            if not dev:
+                self.flask_app.logger.error(f"No Device for {prefix}/{client_id}")
+                return
+
+            cam = Camera.query.filter_by(device_id=dev.id).first()
+            if not cam:
+                self.flask_app.logger.error(f"No Camera row for Device {dev.name}")
+                return
+
+            # ── Decide which URL to hit ----------------------------------------------
+            if cam.snapshot_url:
+                input_is_http = cam.snapshot_url.lower().startswith(('http://', 'https://'))
+                input_url     = cam.snapshot_url
+                self.flask_app.logger.info(
+                    f"[CameraManager] Using HTTP snapshot_url for cam {cam.id}: {input_url}"
+                )
+            else:
+                # fall back to an RTSP stream
+                stream = (
+                    cam.default_stream
+                    or next((s for s in cam.streams if s.stream_type == 'sub'), None)
+                    or next((s for s in cam.streams if s.stream_type == 'main'), None)
+                )
+                if not stream:
+                    self.flask_app.logger.error(f"No stream or snapshot URL for camera {cam.id}")
+                    return
+                input_url     = stream.full_url or stream.get_full_url(include_auth=True)
+                input_is_http = False
+                self.flask_app.logger.info(
+                    f"[CameraManager] Using RTSP URL for cam {cam.id}: {input_url}"
+                )
+
+            # ── Fetch JPEG ------------------------------------------------------------
+            try:
+                if input_is_http:
+                    # ---------- Auth & TLS options ----------
+                    auth = None
+                    if cam.username and cam.password:
+                        auth = HTTPDigestAuth(cam.username, cam.password)  # prefer Digest
+
+                    verify = True
+                    parsed = urlparse.urlparse(input_url)
+                    if "insecure=1" in parsed.query.lower():
+                        verify = False
+                    # many Hikvision cams have self-signed certs; allow http:// to skip TLS
+                    if parsed.scheme == "http":
+                        verify = False
+
+                    self.flask_app.logger.debug(
+                        f"[CameraManager] HTTP GET {input_url} "
+                        f"(auth={'Digest' if auth else 'None'}, verify={verify})"
+                    )
+                    resp = requests.get(input_url, auth=auth, timeout=5, verify=verify)
+                    # If Digest rejected, retry Basic transparently
+                    if resp.status_code == 401 and auth:
+                        self.flask_app.logger.debug(
+                            "[CameraManager] Digest 401, retrying with Basic auth"
+                        )
+                        resp = requests.get(
+                            input_url,
+                            auth=HTTPBasicAuth(cam.username, cam.password),
+                            timeout=5,
+                            verify=verify
+                        )
+                    resp.raise_for_status()
+                    jpg = resp.content
+                    self.flask_app.logger.info(
+                        f"[CameraManager] HTTP snapshot OK status={resp.status_code} "
+                        f"bytes={len(jpg)}"
+                    )
+                else:
+                    # ---------- RTSP via FFmpeg ----------
+                    jpg = _ffmpeg_snapshot(input_url)
+            except Exception as e:
+                self.flask_app.logger.error(f"Snapshot failed for cam {cam.id}: {e}")
+                return
+
+            # ── Convert to PDF if requested ------------------------------------------
+            if want_pdf:
+                out, ext = _to_pdf(jpg), 'pdf'
+            else:
+                out, ext = jpg, 'jpg'
+
+            # ── Publish over MQTT -----------------------------------------------------
+            b64       = base64.b64encode(out).decode()
+            topic_out = f"{prefix}/{client_id}/snapshot"
+            payload   = json.dumps({"ext": ext, "file": b64})
+            self.client.publish(topic_out, payload)
+            self.flask_app.logger.info(
+                f"[CameraManager] MQTT→ {topic_out} ext={ext} size={len(b64)} chars"
+            )
+
+            # camera log topic
+            log_topic = f"{prefix}/{client_id}/log"
+            log       = {
                 "event":     "snapshot",
                 "camera_id": cam.id,
                 "ext":       ext,
