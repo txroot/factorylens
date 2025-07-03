@@ -71,6 +71,10 @@ class StorageManager:
         - save to disk
         - publish confirmation
         """
+
+        # Parse topic and extract device ID
+        prefix, client_id, _ = msg.topic.split("/", 2)
+
         try:
             data = json.loads(msg.payload.decode())
             preview = payload_preview(data)
@@ -103,9 +107,6 @@ class StorageManager:
 
             # Decode base64 file content
             content = base64.b64decode(file_b64)
-
-            # Parse topic and extract device ID
-            prefix, client_id, _ = msg.topic.split("/", 2)
 
             with self.flask_app.app_context():
                 dev = Device.query.filter_by(mqtt_client_id=client_id).first()

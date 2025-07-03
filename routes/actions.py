@@ -29,6 +29,7 @@ def actions_page():
     """Render the Actions list (or empty‑state when no Action‑Agent)."""
     return render_template(
         "settings/actions.hbs",
+        dashboard_title="Actions",
         agent_ok=ensure_agent_exists()
     )
 

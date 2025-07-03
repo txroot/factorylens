@@ -1,5 +1,4 @@
 # docker-compose.yml file for Factory Lens
-version: "3.8"
 
 services:
   factory-lens:

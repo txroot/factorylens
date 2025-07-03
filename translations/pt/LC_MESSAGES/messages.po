@@ -35,6 +35,9 @@ msgstr "O token expirou."
 msgid "welcome_title"
 msgstr "Factory Lens | Bem-vindo ao sistema de armazenamento de imagens de produtos"
 
+msgid "dashboard_title"
+msgstr "Factory Lens – Dashboard"
+
 msgid "dashboard_description"
 msgstr "Aceda ao seu painel para gerir imagens de produtos e dados relacionados."
 
