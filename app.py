@@ -1,12 +1,13 @@
 # app.py
 
 import os
+import time
 os.environ.setdefault("FLASK_APP", __name__)
 
 # Flask
 from flask import Flask
 from flask_migrate import Migrate
-from flask import session, request
+from flask import session, request, jsonify
 
 from extensions import db, login_manager
 
@@ -39,6 +40,8 @@ from routes.apps.storage import apps_storage_bp
 from routes.apps.elfinder_connector import elfinder_bp
 from routes.apps.device_control import apps_ctrl_bp
 from routes.actions import actions_bp
+
+from controllers.actions_handler import get_action_manager
 
 # from routes.automations import automations_bp   # enable when ready
 
@@ -104,6 +107,16 @@ def create_app():
     def inject_translation():
         from flask_babel import gettext as t
         return dict(t=t)
+
+    @app.route("/health")
+    def health():
+        mgr = get_action_manager()
+        ok  = bool(
+            mgr and
+            (time.time() - mgr.last_beat < mgr.interval * 2)  # 2× interval margin
+        )
+        return (jsonify(status="ok"),   200) if ok else \
+            (jsonify(status="dead"), 500)
 
     # Register Blueprints
     app.register_blueprint(auth_bp)

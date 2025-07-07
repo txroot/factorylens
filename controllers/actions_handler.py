@@ -1,4 +1,5 @@
 # controllers/actions_handler.py
+import os
 import threading
 import time
 import json
@@ -87,7 +88,11 @@ class ActionWrapper:
 
 
 class ActionManager:
-    def __init__(self, mqtt_client, status_interval: float = 30.0):
+    def __init__(self, mqtt_client, status_interval: float = 30.0, watchdog_factor: int = 2):
+        # 
+        self.last_beat       = time.time()
+        self.watchdog_timeout = status_interval * watchdog_factor
+
         self.client      = mqtt_client
         self.flask_app   = getattr(mqtt_client, "_userdata", None)
         self.interval    = status_interval
@@ -100,6 +105,17 @@ class ActionManager:
         # sets for listening
         self._triggers   = set()  # topics that trigger IF
         self._results    = set()  # topics that deliver THEN results
+
+        threading.Thread(
+            target=self._status_loop,
+            name="ActionManager-Heartbeat",
+            daemon=True
+        ).start()
+        threading.Thread(
+            target=self._watchdog_loop,
+            name="ActionManager-Watchdog",
+            daemon=True
+        ).start()
 
         self._load_actions()
         self._install_subscriptions()
@@ -149,7 +165,22 @@ class ActionManager:
                 summary = [{"id": a.id, "name": a.name, "state": a.state} for a in self.actions.values()]
                 app.logger.info("🕒 actions/status → %s", summary)
                 self.client.publish("actions/status", json.dumps(summary))
+            self.last_beat = time.time()
             time.sleep(self.interval)
+
+    def _watchdog_loop(self):
+        """
+        Kills the process if the heartbeat has not advanced within
+        `self.watchdog_timeout` seconds. Docker will auto-restart.
+        """
+        while True:
+            time.sleep(self.watchdog_timeout)
+            if time.time() - self.last_beat > self.watchdog_timeout:
+                app.logger.critical(
+                    "⚠️  ActionManager heartbeat stalled >%ds – exiting",
+                    self.watchdog_timeout
+                )
+                os._exit(1)      # let Docker restart the container
 
     def _set_state(self, act: ActionWrapper, new_state: str):
         act.state = new_state

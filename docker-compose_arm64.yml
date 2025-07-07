@@ -5,13 +5,14 @@ services:
     platform: linux/arm64
     build:
       context: .
-      # → no more `platform:` here
     container_name: factory-lens
     ports:
       - "8082:8082"
     volumes:
       - .:/app
       - ./storage:/app/storage
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     env_file:
       - .env
     environment:
@@ -25,7 +26,38 @@ services:
     depends_on:
       - db
       - mqtt
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  shelly-relay:
+    platform: linux/arm64
+    build:
+      context: ./relay
+    container_name: shelly-relay
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    env_file:
+      - .env
+    environment:
+      MQTT_BROKER:   ${MQTT_HOST}
+      MQTT_HOST:     ${MQTT_HOST}    # alias for compatibility
+      MQTT_PORT:     ${MQTT_PORT}
+      MQTT_USER:     ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      LOG_LEVEL:     INFO            # optional, default INFO
+    depends_on:
+      - mqtt
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport os,sys,paho.mqtt.client as m; c=m.Client();\ntry:\n  c.connect(os.getenv('MQTT_BROKER'), int(os.getenv('MQTT_PORT')), 5)\n  c.disconnect()\n  sys.exit(0)\nexcept Exception:\n  sys.exit(1)\nPY"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
     platform: linux/arm64
@@ -38,6 +70,8 @@ services:
       MYSQL_PASSWORD:      ${DB_PASSWORD}
     volumes:
       - ${MYSQL_DATA_PATH}:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "3308:3306"
     restart: unless-stopped
@@ -50,6 +84,8 @@ services:
       - "1883:1883"
     volumes:
       - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     restart: unless-stopped
 
   phpmyadmin:
@@ -57,6 +93,9 @@ services:
     container_name: factorylens-pma
     depends_on:
       - db
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     environment:
       PMA_HOST:     ${DB_HOST}
       PMA_USER:     ${DB_USER}
