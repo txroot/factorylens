@@ -247,89 +247,174 @@ class ActionManager:
                         threading.Thread(target=self._execute_then, args=(act,), daemon=True).start()
 
     def _execute_then(self, act: ActionWrapper):
+        """
+        Fire the THEN command and, if success/error branches exist,
+        wait for the outcome published by the *THEN* device.
+
+        ┌── IF  (trigger topic)
+        │
+        ├── THEN (command topic) ──► result_topic   ← we ONLY watch this
+        │                             │
+        │                             └─ payload 'success' / 'error'
+        │
+        ├── EVALUATE success (optional)
+        └── EVALUATE error   (optional)
+        """
         with self.flask_app.app_context():
-            log  = app.logger
+            log = app.logger
+            log.debug("↪️  _execute_then(%s) entering – chain=%s", act.id, act.chain)
+
+            # ────────────────────────────────────────────────────
+            # 1) Grab the THEN node
+            # ────────────────────────────────────────────────────
             then = act.chain[1] if len(act.chain) > 1 else None
             if not then:
-                self._set_state(act, 'success')
-                self._set_state(act, 'idle')
+                log.debug("⚠️  Action %s has no THEN – marking success/idle", act.id)
+                self._set_state(act, "success")
+                self._set_state(act, "idle")
                 return
 
-            # fire THEN command
-            dev      = Device.query.get(then['device_id'])
-            full_cmd = f"{dev.topic_prefix}/{dev.mqtt_client_id}/{then['topic']}"
-            cmd      = then['command'] if then['command'] != '$IF' else act.if_payload or ''
+            # ────────────────────────────────────────────────────
+            # 2) Publish the command on the target device/topic
+            # ────────────────────────────────────────────────────
+            dev_then = Device.query.get(then["device_id"])
+            full_cmd = f"{dev_then.topic_prefix}/{dev_then.mqtt_client_id}/{then['topic']}"
+            cmd      = then["command"] if then["command"] != "$IF" else act.if_payload or ""
+
             self.client.publish(
                 "actions/then/command",
                 json.dumps({"action_id": act.id, "topic": full_cmd, "command": cmd})
             )
-            log.debug(f"\n→ [THEN] Pub {full_cmd} → {payload_preview(cmd)!r}\n")
+            log.debug("🚀 [THEN] Pub %s → %r", full_cmd, payload_preview(cmd))
+
             self.client.publish(full_cmd, cmd)
 
-            # if no branches, done
-            branches = [n for n in act.chain if n.get('branch') in ('success','error')]
+            # ────────────────────────────────────────────────────
+            # 3) If there are no evaluation branches we're done
+            # ────────────────────────────────────────────────────
+            branches = [n for n in act.chain if n.get("branch") in ("success", "error")]
             if not branches:
-                self._set_state(act, 'success')
-                self._set_state(act, 'idle')
+                log.debug("✅ No EVALUATE branches for Action %s – done", act.id)
+                self._set_state(act, "success")
+                self._set_state(act, "idle")
                 return
 
-            # prepare to wait for result
-            rt      = then.get('result_topic','')
-            succ    = next((n for n in branches if n['branch']=='success'), None)
-            err     = next((n for n in branches if n['branch']=='error'),   None)
-            def full_rt(node):
-                t = node.get('result_topic') or rt
-                return f"{dev.topic_prefix}/{dev.mqtt_client_id}/{t}" if t else None
-            succ_rt = full_rt(succ) if succ else None
-            err_rt  = full_rt(err ) if err  else None
+            succ = next((n for n in branches if n["branch"] == "success"), None)
+            err  = next((n for n in branches if n["branch"] == "error"),   None)
+            log.debug("🔎 Branch nodes – success=%s  error=%s", succ, err)
 
-            log.debug(f"→ [THEN] Waiting for {succ_rt} or {err_rt}")
-            # determine timeout
-            to_base = self._to_seconds(then.get('timeout',0), then.get('timeout_unit','sec'))
-            to_succ = self._to_seconds(succ.get('timeout',0), succ.get('timeout_unit','sec')) if succ else None
-            to_err  = self._to_seconds(err .get('timeout',0), err .get('timeout_unit','sec')) if err  else None
-            wait    = min(x for x in (to_succ, to_err, to_base) if x is not None)
+            # ────────────────────────────────────────────────────
+            # 4) Compute the single *result* topic that tells us
+            #    whether the THEN step succeeded or failed
+            # ────────────────────────────────────────────────────
+            base_rt = then.get("result_topic", "")
+            full_rt = (
+                f"{dev_then.topic_prefix}/{dev_then.mqtt_client_id}/{base_rt}"
+                if base_rt else None
+            )
 
+            succ_rt = full_rt if succ else None
+            err_rt  = full_rt if err  else None      # both point to the SAME topic
+
+            # ────────────────────────────────────────────────────
+            # 5) Timeout calculation
+            # ────────────────────────────────────────────────────
+            to_base = self._to_seconds(
+                then.get("timeout", 0), then.get("timeout_unit", "sec")
+            )
+            to_succ = self._to_seconds(
+                succ.get("timeout", 0), succ.get("timeout_unit", "sec")
+            ) if succ else None
+            to_err  = self._to_seconds(
+                err.get("timeout", 0), err.get("timeout_unit", "sec")
+            ) if err else None
+
+            wait = min(x for x in (to_succ, to_err, to_base) if x is not None)
+            log.debug(
+                "⏳ Waiting %.1fs for result – base=%s  succ_rt=%s  err_rt=%s",
+                wait, full_rt, succ_rt, err_rt
+            )
+
+            # ────────────────────────────────────────────────────
+            # 6) Register the pending wait in the shared dict
+            # ────────────────────────────────────────────────────
             ev = Event()
             with self._lock:
                 self._pending[act.id] = {
-                    'event': ev,
-                    'branches': {
-                        **({ 'success': {'topic': succ_rt, 'cmp': succ.get('cmp','=='), 'match': str(succ['match']['value'])} } if succ and succ_rt else {}),
-                        **({ 'error':   {'topic': err_rt,  'cmp': err .get('cmp','==' ), 'match': str(err ['match']['value'])} } if err  and err_rt  else {})
+                    "event": ev,
+                    "branches": {
+                        **({
+                            "success": {
+                                "topic": succ_rt,
+                                "cmp":   succ.get("cmp", "=="),
+                                "match": str(succ["match"]["value"])
+                            }
+                        } if succ and succ_rt else {}),
+                        **({
+                            "error": {
+                                "topic": err_rt,
+                                "cmp":   err.get("cmp", "=="),
+                                "match": str(err["match"]["value"])
+                            }
+                        } if err and err_rt else {})
                     },
-                    'observed': None,
-                    'observed_topic': None
+                    "observed":       None,
+                    "observed_topic": None
                 }
 
-            log.debug("Action %s pending branches: %s", act.id, branches)
+            log.debug("📌 pending[%s] = %s", act.id, self._pending[act.id])
+
+            # ────────────────────────────────────────────────────
+            # 7) Block until we receive the result or timeout
+            # ────────────────────────────────────────────────────
             ev.wait(wait)
+
             with self._lock:
                 pend = self._pending.pop(act.id, {})
-            obs = pend.get('observed')
-            top = pend.get('observed_topic')
+            obs = pend.get("observed")
+            top = pend.get("observed_topic")
+            log.debug("🔔 Wait finished – observed=%r  topic=%s", obs, top)
 
             self.client.publish(
                 "actions/then/result",
-                json.dumps({"action_id": act.id, "result_topic": (succ_rt or err_rt) or "", "matched": bool(obs), "payload": obs})
+                json.dumps({
+                    "action_id": act.id,
+                    "result_topic": full_rt or "",
+                    "matched": bool(obs),
+                    "payload": obs,
+                })
             )
 
-            # choose and run branch
+            # ────────────────────────────────────────────────────
+            # 8) Decide which branch to fire
+            # ────────────────────────────────────────────────────
             chosen = None
-            if obs is not None:
-                if err and top == err_rt and _compare(obs, str(err['match']['value']), err.get('cmp','==')):
-                    chosen = 'error'
-                elif succ and top == succ_rt and _compare(obs, str(succ['match']['value']), succ.get('cmp','==')):
-                    chosen = 'success'
-            if not chosen and succ and err:
-                chosen = 'error'
+            if obs is not None:                       # we got a message
+                if err and _compare(
+                    obs, str(err["match"]["value"]), err.get("cmp", "==")
+                ):
+                    chosen = "error"
+                elif succ and _compare(
+                    obs, str(succ["match"]["value"]), succ.get("cmp", "==")
+                ):
+                    chosen = "success"
+            else:                                     # timeout
+                if err:                               # “timeout counts as error”
+                    chosen = "error"
 
+            log.debug("🎯 Branch decision for Action %s → %s", act.id, chosen)
+
+            # ────────────────────────────────────────────────────
+            # 9) Fire branch (if any) and update state
+            # ────────────────────────────────────────────────────
             if chosen:
-                log.info(f"[THEN] firing '{chosen}' branch for '{act.name}'")
+                log.info("[THEN] firing '%s' branch for '%s'", chosen, act.name)
                 self._run_branch(act, chosen)
                 self._set_state(act, chosen)
 
-            self._set_state(act, 'idle')
+            self._set_state(act, "idle")
+            log.debug("🏁 _execute_then(%s) finished – state back to idle", act.id)
+
 
     def _run_branch(self, act: ActionWrapper, branch: str):
         with self.flask_app.app_context():

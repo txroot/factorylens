@@ -2,6 +2,7 @@
 
 services:
   factory-lens:
+    platform: linux/arm64
     build:
       context: .
     container_name: factory-lens
@@ -9,53 +10,128 @@ services:
       - "8082:8082"
     volumes:
       - .:/app
-      - ./storage:/app/storage       # ← share host ./storage ↔ container /app/storage
+      - ./storage:/app/storage
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     env_file:
       - .env
     environment:
-      FLASK_DEBUG: ${FLASK_DEBUG}
-      DB_HOST: ${DB_HOST}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      MQTT_BROKER: ${MQTT_BROKER}
-      MQTT_PORT: ${MQTT_PORT}
+      FLASK_DEBUG:   ${FLASK_DEBUG}
+      DB_HOST:       ${DB_HOST}
+      DB_NAME:       ${DB_NAME}
+      DB_USER:       ${DB_USER}
+      DB_PASSWORD:   ${DB_PASSWORD}
+      MQTT_BROKER:   ${MQTT_HOST}
+      MQTT_PORT:     ${MQTT_PORT}
     depends_on:
       - db
       - mqtt
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  heartbeat-forwarder:
+    platform: linux/arm64
+    build:
+      context: ./heartbeat-forwarder
+    container_name: heartbeat-forwarder
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    env_file:
+      - .env
+    environment:
+      # MQTT connection
+      MQTT_BROKER:   ${MQTT_HOST}
+      MQTT_PORT:     ${MQTT_PORT}
+      MQTT_USER:     ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      # Filtering the message
+      SUB_TOPIC:     factory/action/action-agent/log
+      EXPECT_EVENT:  heartbeat
+      EXPECT_DEVICE: "14"
+      # Shelly Gen2 target
+      SHELLY_IP:       192.168.1.100
+      SHELLY_ENDPOINT: "/rpc/Switch.Set"
+      HTTP_METHOD:     GET
+    depends_on:
+      - mqtt
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport os,sys,paho.mqtt.client as m;c=m.Client();\ntry:\n  c.connect(os.getenv('MQTT_BROKER'), int(os.getenv('MQTT_PORT')), 5);\n  c.disconnect();\n  sys.exit(0)\nexcept Exception:\n  sys.exit(1)\nPY"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  shelly-relay:
+    platform: linux/arm64
+    build:
+      context: ./relay
+    container_name: shelly-relay
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    env_file:
+      - .env
+    environment:
+      MQTT_BROKER:   ${MQTT_HOST}
+      MQTT_HOST:     ${MQTT_HOST}    # alias for compatibility
+      MQTT_PORT:     ${MQTT_PORT}
+      MQTT_USER:     ${MQTT_USER}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      LOG_LEVEL:     INFO            # optional, default INFO
+    depends_on:
+      - mqtt
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport os,sys,paho.mqtt.client as m; c=m.Client();\ntry:\n  c.connect(os.getenv('MQTT_BROKER'), int(os.getenv('MQTT_PORT')), 5)\n  c.disconnect()\n  sys.exit(0)\nexcept Exception:\n  sys.exit(1)\nPY"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
-    image: mariadb:10.6
+    platform: linux/arm64
+    image: mariadb
     container_name: factorylens-db
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE:      ${DB_NAME}
+      MYSQL_USER:          ${DB_USER}
+      MYSQL_PASSWORD:      ${DB_PASSWORD}
     volumes:
       - ${MYSQL_DATA_PATH}:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     ports:
       - "3308:3306"
     restart: unless-stopped
 
   mqtt:
+    platform: linux/arm64
     image: eclipse-mosquitto:2.0
     container_name: factorylens-mqtt
     ports:
       - "1883:1883"
     volumes:
       - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     restart: unless-stopped
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
+    image: arm64v8/phpmyadmin:5
     container_name: factorylens-pma
     depends_on:
       - db
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     environment:
-      PMA_HOST: ${DB_HOST}
-      PMA_USER: ${DB_USER}
+      PMA_HOST:     ${DB_HOST}
+      PMA_USER:     ${DB_USER}
       PMA_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8083:80"
