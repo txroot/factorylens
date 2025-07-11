@@ -87,39 +87,44 @@ class ActionWrapper:
         return f"<Action #{self.id} '{self.name}' state={self.state}>"
 
 
+# ------------------------------------------------------------------
+# ActionManager
+# ------------------------------------------------------------------
 class ActionManager:
-    def __init__(self, mqtt_client, status_interval: float = 30.0, watchdog_factor: int = 2):
-        # 
-        self.last_beat       = time.time()
+    def __init__(self, mqtt_client, status_interval: float = 30.0,
+                 watchdog_factor: int = 2):
+        # ─────────── general state ───────────
+        self.last_beat        = time.time()
         self.watchdog_timeout = status_interval * watchdog_factor
+        self.client           = mqtt_client
+        self.flask_app        = getattr(mqtt_client, "_userdata", None)
+        self.interval         = status_interval
 
-        self.client      = mqtt_client
-        self.flask_app   = getattr(mqtt_client, "_userdata", None)
-        self.interval    = status_interval
+        # ─────────── per-action state ────────
+        self._pending: dict[int, dict] = {}   # action_id → info
+        self._lock     = threading.Lock()
+        self.actions   = {}
 
-        # track pending THEN branches and lock
-        self._pending    = {}  # action_id → pending info
-        self._lock       = threading.Lock()
-        # all loaded actions
-        self.actions     = {}
-        # sets for listening
-        self._triggers   = set()  # topics that trigger IF
-        self._results    = set()  # topics that deliver THEN results
+        # topics we listen to
+        self._triggers: set[str] = set()
+        self._results : set[str] = set()
 
-        threading.Thread(
+        # ─────────── background workers ──────
+        threading.Thread(                      # ONE heartbeat thread
             target=self._status_loop,
             name="ActionManager-Heartbeat",
             daemon=True
         ).start()
-        threading.Thread(
+
+        threading.Thread(                      # watchdog (unchanged)
             target=self._watchdog_loop,
             name="ActionManager-Watchdog",
             daemon=True
         ).start()
 
+        # ─────────── initialisation ──────────
         self._load_actions()
         self._install_subscriptions()
-        threading.Thread(target=self._status_loop, daemon=True).start()
 
     def _load_actions(self):
         with self.flask_app.app_context():

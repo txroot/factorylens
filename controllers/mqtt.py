@@ -159,10 +159,6 @@ def init_mqtt(app):
 
     client.connect(_MQTT_HOST, _MQTT_PORT, keepalive=30)
 
-     # ─── START ACTION MANAGER ─────────────────────────────
-    from controllers.actions_handler import init_action_manager
-    app.action_manager = init_action_manager(client, status_interval=5.0)
-
     # ─── START CAMERA MANAGER ─────────────────────────────
     from controllers.camera_handler import init_camera_manager
     app.camera_manager = init_camera_manager(client, status_interval=5.0)
@@ -170,6 +166,10 @@ def init_mqtt(app):
     # ─── START STORAGE MANAGER ───────────────────────────
     from controllers.storage_handler import init_storage_manager
     app.storage_manager = init_storage_manager(client, status_interval=5.0)
+
+     # ─── START ACTION MANAGER ─────────────────────────────
+    from controllers.actions_handler import init_action_manager
+    app.action_manager = init_action_manager(client, status_interval=5.0)
 
     t = threading.Thread(target=client.loop_forever, daemon=True)
     t.start()
