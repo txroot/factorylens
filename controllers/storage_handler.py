@@ -1,4 +1,3 @@
-# controllers/storage_handler.py
 import os
 import io
 import json
@@ -17,9 +16,12 @@ from flask import current_app as app
 from extensions import db
 from models.device import Device
 
+from controllers.queues        import STORAGE_Q
+from controllers.queue_consumer import QueueConsumerMixin   # new helper
 
-# ─────────────────────────── Helpers ──────────────────────────────
-def payload_preview(data, max_len=100):
+
+# ───────────────────────────── Helpers ────────────────────────────────
+def payload_preview(data, max_len: int = 100):
     if isinstance(data, dict):
         return {
             k: (f"[{len(v)} chars]" if isinstance(v, str) and len(v) > max_len else v)
@@ -41,83 +43,120 @@ class _FTP(ftplib.FTP):
         self._logger = logger
         super().__init__(*a, **kw)
 
+    # python 3.12 removed the internal prints; we still override for safety
     def _print_debug(self, *msgs):
         self._logger.debug("[FTP dbg] %s", " ".join(str(m) for m in msgs))
 
 
-# ───────────────────────── StorageManager ─────────────────────────
-class StorageManager:
+# ────────────────────────── StorageManager ────────────────────────────
+class StorageManager(QueueConsumerMixin):
+    """
+    Consumes messages from STORAGE_Q.  Each payload is expected to be the
+    same as the old “…/file/…/create” MQTT message.  No direct broker
+    subscriptions remain – relevance is tested via `_is_relevant()`.
+    """
+    _queue     = STORAGE_Q
+    _tag       = "💾"
+    _n_threads = 4
+
+    # ------------------------------------------------------------------
+    # life-cycle
+    # ------------------------------------------------------------------
     def __init__(self, mqtt_client):
-        self.client = mqtt_client
+        self.client    = mqtt_client
         self.flask_app = getattr(mqtt_client, "_userdata", None)
-        self._install_subscriptions()
-        threading.Thread(target=self._poll_loop, daemon=True).start()
 
-    # ---------------------------------------------------------------
-    # MQTT subscription setup
-    # ---------------------------------------------------------------
-    def _install_subscriptions(self):
-        with self.flask_app.app_context():
-            for dev in Device.query.filter_by(enabled=True).all():
-                if not dev.topic_prefix or not dev.mqtt_client_id:
-                    continue
-                topic = f"{dev.topic_prefix}/{dev.mqtt_client_id}/file/+/create"
-                self.client.subscribe(topic)
-                self.client.message_callback_add(topic, self.on_create)
+        # start the queue consumer
+        self._start_consumer()
 
-    # ---------------------------------------------------------------
-    # on_create – handles file uploads
-    # ---------------------------------------------------------------
-    def on_create(self, client, userdata, msg):
-        prefix, client_id, _ = msg.topic.split("/", 2)
+        # background heartbeat loop
+        threading.Thread(
+            target=self._poll_loop,
+            name="StorageManager-Heartbeat",
+            daemon=True
+        ).start()
 
+    # ------------------------------------------------------------------
+    # QueueConsumerMixin requirements
+    # ------------------------------------------------------------------
+    def _is_relevant(self, topic: str) -> bool:
+        """
+        Cheap test before we dequeue: message must contain '/file/' and
+        end with '/create'.
+        """
+        return topic.endswith("/create") and "/file/" in topic
+
+    def _process(self, _dev_id: int, topic: str, payload: str):
+        """Parse the JSON payload exactly like the old on_create()."""
+        # split once: <prefix>/<client_id>/file/.../create
+        prefix, client_id, _ = topic.split("/", 2)
+        self._handle_create(prefix, client_id, topic, payload)
+
+    # ------------------------------------------------------------------
+    # main upload handler (refactored from old on_create)
+    # ------------------------------------------------------------------
+    def _handle_create(self, prefix: str, client_id: str,
+                       full_topic: str, raw_payload: str):
         try:
-            data = json.loads(msg.payload.decode())
+            data = json.loads(raw_payload)
             self.flask_app.logger.info(
-                "[StorageManager] MQTT← %s → %s", msg.topic, payload_preview(data)
+                "💾 MQTT← %s → %s", full_topic, payload_preview(data)
             )
 
             file_b64 = data.get("file")
             ext      = data.get("ext", "bin").lower().strip(".")
-            name     = data.get("name", f"file_{datetime.now():%Y-%m-%d_%H-%M-%S}")
+            name     = data.get(
+                "name", f"file_{datetime.now():%Y-%m-%d_%H-%M-%S}"
+            )
             if not file_b64:
-                raise ValueError("missing file payload")
+                raise ValueError("missing base64 file payload")
 
-            folder  = (
+            folder = (
                 "images" if ext in {"jpg", "jpeg", "png", "gif", "bmp", "webp"}
                 else "pdfs" if ext == "pdf" else "others"
             )
-            relpath = os.path.join(folder, data.get("path", "")) if data.get("path") else folder
+            relpath = (
+                os.path.join(folder, data.get("path", ""))
+                if data.get("path") else folder
+            )
             content = base64.b64decode(file_b64)
 
-            # ── look up Device + dispatch ───────────────────────────
+            # —— look up Device to decide storage backend ————————
             with self.flask_app.app_context():
                 dev = Device.query.filter_by(mqtt_client_id=client_id).first()
                 if not dev:
-                    raise RuntimeError(f"no Device for client_id={client_id}")
+                    raise RuntimeError(f"no Device row for client_id={client_id}")
 
                 model  = (dev.model.name or "").lower()
                 params = dev.parameters
-                self.flask_app.logger.info("Device Model: %s | Params: %s", model, params)
+                self.flask_app.logger.info(
+                    "Device Model: %s | Params: %s", model, params
+                )
 
                 if model == "local storage":
                     self._save_local(params, relpath, name, ext, content)
                     rel_for_payload = os.path.join(relpath, f"{name}.{ext}")
 
                 elif model == "ftp / sftp storage":
-                    self.flask_app.logger.debug("[StorageManager] Remote store params: %s", params)
-                    rel_for_payload = self._save_remote(params, relpath, name, ext, content)
+                    rel_for_payload = self._save_remote(
+                        params, relpath, name, ext, content
+                    )
 
                 else:
-                    raise RuntimeError(f"unsupported storage model: {model}")
+                    raise RuntimeError(f"unsupported storage model '{model}'")
 
+                # publish success / log
                 self._publish_success(prefix, client_id, rel_for_payload)
 
         except Exception as exc:
-            self.flask_app.logger.error("[StorageManager] file/create failed: %s", exc)
-            self.client.publish(f"{prefix}/{client_id}/file/created", json.dumps("error"))
+            self.flask_app.logger.error("💾 file/create failed: %s", exc)
+            self.client.publish(
+                f"{prefix}/{client_id}/file/created", json.dumps("error")
+            )
 
-    # ─────────────────────────── Local disk ─────────────────────────
+    # ------------------------------------------------------------------
+    # local disk
+    # ------------------------------------------------------------------
     def _save_local(self, params, relpath, name, ext, content):
         raw_base  = params.get("base_path", "tmp").lstrip("/")
         base_path = os.path.normpath(os.path.join("/app/storage", raw_base))
@@ -127,9 +166,11 @@ class StorageManager:
         file_path = os.path.join(full_dir, f"{name}.{ext}")
         with open(file_path, "wb") as fh:
             fh.write(content)
-        self.flask_app.logger.info("[StorageManager] local save → %s", file_path)
+        self.flask_app.logger.info("💾 local save → %s", file_path)
 
-    # ──────────────────────── FTP / SFTP dispatcher ─────────────────
+    # ------------------------------------------------------------------
+    # remote dispatcher
+    # ------------------------------------------------------------------
     def _save_remote(self, params, relpath, name, ext, content):
         proto   = params.get("protocol", "ftp").lower()
         host    = params["host"]
@@ -138,23 +179,22 @@ class StorageManager:
         pw      = params.get("password")
         root    = params.get("root_path", "/").rstrip("/")
         passive = params.get("passive_mode", True)
-        use_ssl = params.get("ssl", False)
 
         remote_rel  = os.path.join(relpath, f"{name}.{ext}").replace("\\", "/")
-        remote_full = remote_rel  # ← no duplicate root path
+        remote_full = remote_rel  # no double-root
 
         if proto == "ftp":
             return self._ftp_store(
-                host, port, user, pw, passive, use_ssl, root,
-                remote_rel, remote_full, content
+                host, port, user, pw, passive, params.get("ssl", False),
+                root, remote_rel, remote_full, content
             )
         if proto == "sftp":
             return self._sftp_store(
                 host, port, user, pw, root, remote_rel, remote_full, content
             )
-        raise RuntimeError(f"unknown protocol {proto}")
+        raise RuntimeError(f"unknown protocol '{proto}'")
 
-    # --------------------------------------------------------------- FTP
+    # ------------------------------------------------------------------ FTP
     def _ftp_store(self, host, port, user, pw, passive,
                    use_ssl, root_path, remote_rel, remote_full, content):
         log = self.flask_app.logger
@@ -168,96 +208,49 @@ class StorageManager:
 
         if root_path and root_path != "/":
             try:
-                log.debug("[FTP] CWD %s", root_path)
                 ftp.cwd(root_path)
             except ftplib.error_perm:
                 self._ftp_mkdirs(ftp, root_path.lstrip("/"))
                 ftp.cwd(root_path)
-        log.debug("[FTP] After root cwd. PWD=%s", ftp.pwd())
 
         self._ftp_mkdirs(ftp, os.path.dirname(remote_rel))
-        log.debug("[FTP] STOR %s -> %s", remote_full, ftp.pwd())
+        log.debug("[FTP] STOR %s", remote_full)
         ftp.storbinary(f"STOR {os.path.basename(remote_full)}", io.BytesIO(content))
-        log.debug("[FTP] Stored file %s", remote_full)
         ftp.quit()
         return remote_rel
 
-    # -------------------------------------------------------------- SFTP
+    def _ftp_mkdirs(self, ftp, path):
+        for part in path.strip("/").split("/"):
+            if not part:
+                continue
+            try:
+                ftp.mkd(part)
+            except ftplib.error_perm:
+                pass
+            ftp.cwd(part)
+
+    # ----------------------------------------------------------------- SFTP
     def _sftp_store(self, host, port, user, pw,
                     root_path, remote_rel, remote_full, content):
-        """
-        Upload `content` to an SFTP server under `root_path` (relative to the user's home),
-        creating any needed directories along the way.
-        """
         if not paramiko:
-            raise RuntimeError("paramiko missing – install for SFTP")
+            raise RuntimeError("paramiko missing → install for SFTP")
+
         log = self.flask_app.logger
+        transport = paramiko.Transport((host, port))
+        transport.connect(username=user, password=pw)
+        sftp = paramiko.SFTPClient.from_transport(transport)
 
-        # Connect & authenticate
-        log.debug("[SFTP] connect %s:%s user=%s", host, port, user)
-        t = paramiko.Transport((host, port))
-        t.connect(username=user, password=pw)
-        sftp = paramiko.SFTPClient.from_transport(t)
-
-        # Record initial working directory (may be None)
-        try:
-            cwd = sftp.getcwd()
-        except IOError:
-            cwd = None
-        log.debug("[SFTP] Connected. initial cwd=%s", cwd)
-
-        # ── Ensure root_path exists _relative_ to the SFTP home ───────────────────
-        rel_root = root_path.lstrip("/")                  # e.g. "factory-lens"
-        log.debug("[SFTP] Ensuring root_path exists (relative): %s", rel_root)
+        rel_root = root_path.lstrip("/")
         self._sftp_mkdirs(sftp, rel_root)
-        try:
-            sftp.chdir(rel_root)
-            log.debug("[SFTP] After root chdir. cwd=%s", sftp.getcwd())
-        except Exception as e:
-            log.error("[SFTP] Failed to chdir to %s: %s", rel_root, e)
-            raise
+        sftp.chdir(rel_root)
 
-        # ── Ensure the target subdirectory exists ────────────────────────────────
-        target_dir = os.path.dirname(remote_full)
-        log.debug("[SFTP] Ensuring remote directory for file exists: %s", target_dir)
-        self._sftp_mkdirs(sftp, target_dir)
-        try:
-            log.debug("[SFTP] After target mkdirs/chdir. cwd=%s", sftp.getcwd())
-        except Exception:
-            pass
+        self._sftp_mkdirs(sftp, os.path.dirname(remote_full))
+        with sftp.open(remote_full, "wb") as fh:
+            fh.write(content)
 
-        # ── List directory contents before writing, for debugging ───────────────
-        try:
-            listing = sftp.listdir()
-            log.debug("[SFTP] Directory listing before write: %s", listing)
-        except Exception as e:
-            log.warning("[SFTP] Could not list directory: %s", e)
-
-        # ── Write the file content ───────────────────────────────────────────────
-        log.debug("[SFTP] STOR %s (remote_full=%s)", os.path.basename(remote_full), remote_full)
-        try:
-            with sftp.open(remote_full, "wb") as fh:
-                fh.write(content)
-            log.debug("[SFTP] Write completed successfully")
-        except Exception as e:
-            log.error("[SFTP] Failed to write %s: %s", remote_full, e)
-            raise
-
-        # ── Final sanity check ──────────────────────────────────────────────────
-        try:
-            final_cwd = sftp.getcwd()
-            final_list = sftp.listdir()
-            log.debug("[SFTP] After write. cwd=%s, contents=%s", final_cwd, final_list)
-        except Exception as e:
-            log.warning("[SFTP] Could not verify after write: %s", e)
-
-        # Close connections
         sftp.close()
-        t.close()
-
-        # Return the path relative to the MQTT payload expectations
+        transport.close()
         return remote_rel
-
 
     def _sftp_mkdirs(self, sftp, path):
         cwd = ""
@@ -268,25 +261,22 @@ class StorageManager:
             except IOError:
                 pass
 
-    # -------------------------------------------------------- success msg
+    # ------------------------------------------------------------------ success / logs
     def _publish_success(self, prefix, client_id, rel_file):
         res_topic = f"{prefix}/{client_id}/file/created"
         self.client.publish(res_topic, json.dumps("success"))
-        self.flask_app.logger.info("[StorageManager] Published success → %s", res_topic)
+        self.flask_app.logger.info("💾 Published success → %s", res_topic)
 
-        self.client.publish(
-            f"{prefix}/{client_id}/file/new",
-            json.dumps({"path": rel_file}),
-        )
-        self.client.publish(
-            f"{prefix}/{client_id}/log",
-            json.dumps(
-                {"event": "file_saved", "path": rel_file,
-                 "timestamp": datetime.utcnow().isoformat()}
-            ),
-        )
+        self.client.publish(f"{prefix}/{client_id}/file/new",
+                            json.dumps({"path": rel_file}))
+        self.client.publish(f"{prefix}/{client_id}/log",
+                            json.dumps({
+                                "event":     "file_saved",
+                                "path":      rel_file,
+                                "timestamp": datetime.utcnow().isoformat()
+                            }))
 
-    # ----------------------------------------------------------- heartbeat
+    # ------------------------------------------------------------------ heartbeat loop
     def _poll_loop(self):
         while True:
             ts = datetime.utcnow().isoformat()
@@ -294,27 +284,26 @@ class StorageManager:
                 for d in Device.query.filter_by(enabled=True).all():
                     self.client.publish(
                         f"{d.topic_prefix}/{d.mqtt_client_id}/log",
-                        json.dumps({"event": "heartbeat",
-                                    "device_id": d.id,
-                                    "timestamp": ts}),
+                        json.dumps({
+                            "event":     "heartbeat",
+                            "device_id": d.id,
+                            "timestamp": ts
+                        })
                     )
             time.sleep(5)
 
-    def handle_message(self, *_):
-        pass
 
-
-# ───────── Singleton helpers ─────────
+# ───────────────────────── singleton helpers ──────────────────────────
 _manager = None
 
 
-def init_storage_manager(mqtt_client, status_interval=None, **_ignored):
+def init_storage_manager(mqtt_client, **_ignored):
     """
-    Factory-lens calls this with a keyword arg `status_interval`.
-    We don’t use it, but we must accept it to avoid a TypeError.
+    Factory called from app; any status_interval kwarg is ignored.
     """
     global _manager
     _manager = StorageManager(mqtt_client)
+    return _manager
 
 
 def get_storage_manager():

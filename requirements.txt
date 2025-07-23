@@ -38,3 +38,6 @@ apscheduler==3.10.3
 
 # File Explorer
 paramiko==2.7.2
+
+# SMB / CIFS client
+pysmb>=2.0.0
